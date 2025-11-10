@@ -2,38 +2,42 @@
 
 {% block content %}
 
-
 <div class="container-fluid">
 <div class="jumbotron">
-    <div class="container-fluid">
-      <h1 class="display-3">SignIn User</h1>
-      <p>Already have an account! Then login and explore Pins to your Taste. </p>
+    <div class="container-fluid text-center">
+      <h1 class="display-3">Login</h1>
+      <p>Access your account to post updates and manage your blog.</p>
     </div>
 </div>
 
 {% if error %}
-<p class="error">{{error}}</p>
+<div class="container-fluid">
+    <div class="alert alert-danger" style="max-width: 500px; margin: 0 auto;">
+        <p class="error mb-0">{{error}}</p>
+    </div>
+</div>
 {% endif %}
 
-<main class="form-signin" center>
+<main class="form-signin" style="max-width: 500px; margin: 50px auto; padding: 40px;">
     <form action="{{ url_for('login') }}" method="POST">
-      <img class="mb-4" src="/static/img/logo.png" alt="Pinterest" height="100">
-      <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
+      <div class="text-center mb-4">
+        <h1 class="h2 mb-3 font-weight-bold" style="color: #e60023;">Anadventures</h1>
+        <p class="text-muted">by Ananya Solanki</p>
+      </div>
   
       <div class="form-group">
-        <label for="email-add">Email:</label>  <br>
-        <input type="email" class="form-control" id="email-add" name="email" placeholder="Email">
+        <label for="email-add"><strong>Username:</strong></label>
+        <input type="text" class="form-control" id="email-add" name="email" placeholder="Enter your username" required style="height: 50px;">
       </div>
 
       <div class="form-group">
-        <label for="password">Password:</label>  <br>
-        <input type="password" class="form-control"  id="password" name="pwd">
+        <label for="password"><strong>Password:</strong></label>
+        <input type="password" class="form-control" id="password" name="pwd" placeholder="Enter your password" required style="height: 50px;">
       </div>
 
-      <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
+      <button class="w-100 btn btn-lg btn-primary" type="submit" style="height: 50px; background-color: #e60023; border: none;">Sign In</button>
     </form>
 </main>
 </div>
-
 
 {% endblock %}

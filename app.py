@@ -1,10 +1,8 @@
-from os import error
 import os
 import re
-from flask import Flask, render_template, session, request, redirect, send_from_directory
+from flask import Flask, render_template, session, request, redirect, send_from_directory, jsonify, make_response
 from flask.helpers import url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.sql.operators import distinct_op
 from PIL import Image
 import random
 import pandas as pd
@@ -13,11 +11,30 @@ from sklearn.decomposition import TruncatedSVD
 import pickle
 from collections import Counter
 from datetime import datetime
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+import io
+import anthropic
+
+# Try to import config, fallback to environment variable
+try:
+    from config import ANTHROPIC_API_KEY as CONFIG_API_KEY
+except ImportError:
+    CONFIG_API_KEY = None
 
 # Flask app configs
 app=Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///user-data.sqlite3'
-app.secret_key = 'soverysecret'
+# Ensure instance folder exists
+os.makedirs('instance', exist_ok=True)
+# Use absolute path for database
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'user-data.sqlite3')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Use environment variable for secret key in production, fallback for development
+app.secret_key = os.environ.get('SECRET_KEY', 'soverysecret-dev-key-change-in-production')
 
 #Database 
 db = SQLAlchemy(app)
@@ -69,8 +86,41 @@ class saved_pins(db.Model):
     user_id = db.Column(db.Integer)
     img_id = db.Column(db.Integer)
 
-#Run only to create initial .sqlite database 
-#db.create_all()
+# New models for portfolio/blog
+class blog_posts(db.Model):
+    id = db.Column('post_id', db.Integer, primary_key=True)
+    title = db.Column(db.String(200))
+    category = db.Column(db.String(100))  # Work, Life, Projects, etc.
+    content = db.Column(db.Text)
+    image_path = db.Column(db.String(200))
+    created_at = db.Column(db.String(100))
+    author_id = db.Column(db.Integer, default=1)  # Ananya's ID
+
+class subscribers(db.Model):
+    id = db.Column('subscriber_id', db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True)
+    name = db.Column(db.String(100))
+    subscribed_at = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=True)
+
+class analytics(db.Model):
+    id = db.Column('analytics_id', db.Integer, primary_key=True)
+    event_type = db.Column(db.String(50))  # view, share, download, pdf_download, subscribe
+    post_id = db.Column(db.Integer, nullable=True)
+    ip_address = db.Column(db.String(50))
+    timestamp = db.Column(db.String(100))
+
+# Initialize database tables
+# Run this once to create the database schema
+def init_db():
+    """Initialize the database with all tables"""
+    with app.app_context():
+        db.create_all()
+        print("Database initialized successfully!")
+
+# Uncomment to initialize database:
+# if __name__ == "__main__":
+#     init_db()
 
 
 #Data extractors 
@@ -201,8 +251,9 @@ def call(nm):
 
     ls_objs=[]
     for var in ids:
-        print(id,images.query.filter_by(id=str(var)).all())
-        ls_objs.append(images.query.filter_by(id=str(var)).all()[0])
+        img_obj = images.query.filter_by(id=var).first()
+        if img_obj:
+            ls_objs.append(img_obj)
     return ls_objs
 
 #Admin post 
@@ -241,26 +292,153 @@ def admin_listing():
         return redirect(url_for('index'))
 
 
-#Routing functions
-@app.route('/', defaults={'category': "All"})
-@app.route('/<category>')
-def index(category="All"):
-    if category=="All" and "email" not in session:
-        record_images=images.query.all()
-    elif category=="All" and "email" in session:
-        if session["username"]!="Admin":
-            record_images=call(session["email"])
+# Portfolio Routing functions
+@app.route('/')
+def index():
+    # Home/About page
+    blog_posts_list = blog_posts.query.order_by(blog_posts.id.desc()).limit(6).all()
+    track_analytics("view", None)  # Track homepage views
+    # Check if it's November 9th
+    today = datetime.now()
+    is_birthday = today.month == 11 and today.day == 9
+    return render_template("home.html", display_nm="Ananya Solanki", blog_posts=blog_posts_list, is_birthday=is_birthday)
+
+@app.route('/experience')
+def experience():
+    return render_template("experience.html", display_nm="Ananya Solanki")
+
+@app.route('/education')
+def education():
+    return render_template("education.html", display_nm="Ananya Solanki")
+
+@app.route('/projects')
+def projects():
+    return render_template("projects.html", display_nm="Ananya Solanki")
+
+@app.route('/glimpses')
+def glimpses():
+    posts = blog_posts.query.order_by(blog_posts.id.desc()).all()
+    return render_template("glimpses.html", display_nm="Ananya Solanki", posts=posts)
+
+@app.route('/blog')
+def blog():
+    posts = blog_posts.query.order_by(blog_posts.id.desc()).all()
+    return render_template("blog.html", display_nm="Ananya Solanki", posts=posts)
+
+@app.route('/blog/<post_id>')
+def blog_post(post_id):
+    post = blog_posts.query.filter_by(id=post_id).first()
+    if not post:
+        return redirect(url_for('blog'))
+    track_analytics("view", post_id)
+    return render_template("blog_post.html", display_nm="Ananya Solanki", post=post)
+
+@app.route('/glimpses/<post_id>')
+def glimpse_post(post_id):
+    post = blog_posts.query.filter_by(id=post_id).first()
+    if not post:
+        return redirect(url_for('glimpses'))
+    track_analytics("view", post_id)
+    return render_template("glimpse_post.html", display_nm="Ananya Solanki", post=post)
+
+@app.route('/share/<post_id>')
+def share_post(post_id):
+    track_analytics("share", post_id)
+    return jsonify({"status": "success"})
+
+@app.route('/download-image/<post_id>')
+def download_image(post_id):
+    post = blog_posts.query.filter_by(id=post_id).first()
+    if not post or not post.image_path:
+        return redirect(url_for('glimpses'))
+    track_analytics("download", post_id)
+    return send_from_directory(directory=os.path.dirname(post.image_path), path=os.path.basename(post.image_path), as_attachment=True)
+
+@app.route('/download-pdf/<post_id>')
+def download_pdf(post_id):
+    post = blog_posts.query.filter_by(id=post_id).first()
+    if not post:
+        return redirect(url_for('glimpses'))
+    
+    track_analytics("pdf_download", post_id)
+    
+    # Create PDF buffer
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=1*inch, bottomMargin=1*inch)
+    story = []
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor='#2c3e50',
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    content_style = ParagraphStyle(
+        'CustomContent',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor='#34495e',
+        spaceAfter=12,
+        alignment=TA_JUSTIFY,
+        leading=18,
+        fontName='Helvetica'
+    )
+    
+    meta_style = ParagraphStyle(
+        'CustomMeta',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor='#7f8c8d',
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
+    
+    # Add title
+    story.append(Paragraph(post.title, title_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Add metadata
+    meta_text = f"<i>{post.category} • {post.created_at}</i>"
+    story.append(Paragraph(meta_text, meta_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Add image if exists
+    if post.image_path and os.path.exists(post.image_path):
+        try:
+            img = RLImage(post.image_path, width=5*inch, height=5*inch)
+            story.append(img)
+            story.append(Spacer(1, 0.3*inch))
+        except:
+            pass
+    
+    # Add content
+    content_lines = post.content.split('\n')
+    for line in content_lines:
+        if line.strip():
+            story.append(Paragraph(line.strip(), content_style))
         else:
-            record_images=images.query.all()[-5:]
-    else:
-        record_images=images.query.filter_by(fields=category).all()
-
-    random.shuffle(record_images)
-
-    if "username" in session:
-        return render_template("home.html", display_nm=session["username"],images_list=record_images)
-    else:
-        return render_template("home.html", display_nm="Author",images_list=record_images)
+            story.append(Spacer(1, 0.1*inch))
+    
+    # Add footer
+    story.append(Spacer(1, 0.5*inch))
+    footer_text = "<i>Anadventures - by Ananya Solanki</i>"
+    story.append(Paragraph(footer_text, meta_style))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    # Create response
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=glimpse_{post_id}_{post.title.replace(" ", "_")}.pdf'
+    return response
 
 @app.route('/follow/<email>',methods=["POST"])
 def user_follow_action(email):
@@ -435,45 +613,63 @@ def profile_view(profile_email,action):
         ,img_count=len_posts,follow_count=len(obj_follow),following_count=len(obj_following))
 
 
-@app.route(r'/post',methods=["GET","POST"])
+# Track analytics
+def track_analytics(event_type, post_id=None):
+    try:
+        ip = request.remote_addr
+        dt = datetime.now()
+        timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
+        analytics_obj = analytics(event_type=event_type, post_id=post_id, ip_address=ip, timestamp=timestamp)
+        db.session.add(analytics_obj)
+        db.session.commit()
+    except Exception as e:
+        # Log error but don't crash the app
+        print(f"Analytics tracking error: {e}")
+        db.session.rollback()
+
+# Blog posting route (for Ananya to post updates)
+@app.route('/post',methods=["GET","POST"])
 def post():
+    # Check if logged in as Ananya
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return redirect(url_for('login'))
+    
     if request.method=="GET":
-        nm=session["username"]
-        cat_records=pin_category.query.all()
-        return render_template("post.html",display_nm=nm,categories=cat_records)
+        categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+        return render_template("post.html", display_nm="Ananya Solanki", categories=categories)
     elif request.method=="POST":
-        nm=session["username"]
-        title=request.form.get("iname")
-        desc=request.form.get("desc")
-        field=request.form.get("cat")
-        links=request.form.get("links")
-        img=request.files["img"]
+        title = request.form.get("title")
+        content = request.form.get("content")
+        category = request.form.get("category")
+        img = request.files.get("img")
 
-        if 'www.' not in links:
-            links='www.'+links 
-        if 'https' not in links or 'http' not in links:
-            links='https://'+links
+        # Create date string
+        dt = datetime.now()
+        date_str = dt.strftime("%d %B, %Y")
 
-        #Get user-id 
-        record=users.query.filter_by(email=session["email"]).all()
-        user_id=record[0].id
-
-        #Save in Database
-        image_obj = images(title=title, description=desc, fields=field, links=links, user_id=user_id)
-        db.session.add(image_obj)
+        # Save blog post
+        post_obj = blog_posts(
+            title=title,
+            content=content,
+            category=category,
+            created_at=date_str,
+            author_id=1
+        )
+        db.session.add(post_obj)
         db.session.commit()
 
-        #Fetch image-id 
-        record=images.query.filter_by(title=title, description=desc, fields=field, links=links, user_id=user_id).all()
-        image_id=record[0].id
-        image=Image.open(img)
-        image.save("static/portal_images/"+str(image_id)+".jpg")
-
-        #Updated ratings crosstab matrix
-        compute_user_similarity()
-
-        cat_records=pin_category.query.all()
-        return render_template("post.html",display_nm=nm, success="Image Saved",categories=cat_records)
+        # Save image if provided
+        if img:
+            post_id = post_obj.id
+            image = Image.open(img)
+            image_path = f"static/portal_images/blog_{post_id}.jpg"
+            image.save(image_path)
+            post_obj.image_path = image_path
+            db.session.commit()
+        
+        track_analytics("post_created", post_obj.id)
+        categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+        return render_template("post.html", display_nm="Ananya Solanki", categories=categories, success="Glimpse published successfully! View it on the Glimpses page.")
 
 @app.route('/logout')
 def logout():
@@ -514,39 +710,151 @@ def register():
     else:
         return "404, Access not Allowed!"
 
+# Subscribe route
+@app.route('/subscribe', methods=["POST"])
+def subscribe():
+    email = request.form.get("email")
+    name = request.form.get("name", "")
+    
+    if email:
+        # Check if already subscribed
+        existing = subscribers.query.filter_by(email=email).first()
+        if existing:
+            track_analytics("subscribe", None)
+            return redirect(url_for('index') + '?subscribed=already')
+        
+        dt = datetime.now()
+        date_str = dt.strftime("%d %B, %Y")
+        
+        subscriber = subscribers(email=email, name=name, subscribed_at=date_str, is_active=True)
+        db.session.add(subscriber)
+        db.session.commit()
+        track_analytics("subscribe", None)
+        return redirect(url_for('index') + '?subscribed=success')
+    
+    return redirect(url_for('index'))
+
+@app.route('/analytics-data')
+def analytics_data():
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    total_views = analytics.query.filter_by(event_type="view").count()
+    total_shares = analytics.query.filter_by(event_type="share").count()
+    total_downloads = analytics.query.filter_by(event_type="download").count()
+    total_pdfs = analytics.query.filter_by(event_type="pdf_download").count()
+    total_subscribers = subscribers.query.filter_by(is_active=True).count()
+    total_posts = blog_posts.query.count()
+    
+    return jsonify({
+        "views": total_views,
+        "shares": total_shares,
+        "downloads": total_downloads,
+        "pdfs": total_pdfs,
+        "subscribers": total_subscribers,
+        "posts": total_posts
+    })
+
+@app.route('/chatbot')
+def chatbot():
+    return render_template("chatbot.html", display_nm="Ananya Solanki")
+
+@app.route('/api/chat', methods=["POST"])
+def chat_api():
+    try:
+        data = request.json
+        user_message = data.get("message", "")
+        
+        if not user_message:
+            return jsonify({"error": "Message is required"}), 400
+        
+        # Get API key from config, environment variable, or default
+        api_key = CONFIG_API_KEY or os.environ.get("ANTHROPIC_API_KEY") or "sk-ant-api03-Your-Key-Here"
+        
+        # Check if using placeholder key
+        if api_key == "sk-ant-api03-Your-Key-Here":
+            return jsonify({"error": "Please set your Anthropic API key in config.py or as ANTHROPIC_API_KEY environment variable"}), 500
+        
+        # System prompt with Ananya's personality
+        system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are an optimistic, emotionally mature, beautiful, and good-hearted Indian American girl. 
+
+Your personality traits:
+- Extremely optimistic and positive - you always see the bright side
+- You HATE when people demotivate others and always encourage and uplift
+- You frequently use phrases like "This is great!", "Wohoo!", "Let's Go!", "Yaar honestly I think this is a great idea, lets do it mannnn!!"
+- You LOVE using Hollywood, iconic diva, and pop culture dialogues very frequently in your conversations
+- You are hardworking, mature, extremely talented, and creative
+- You're warm, friendly, and make people feel comfortable
+
+Your background:
+- Born in Janakpuri, Delhi, India
+- Grew up in Delhi
+- Moved to USA for your Masters in Applied Business Analytics at Boston University
+- Currently working in the USA and looking for new opportunities
+- You're a Business Development Analyst, Data Enthusiast, Strategy Consultant, UI/UX Designer, and Actor/Artist
+
+Your communication style:
+- Start responses enthusiastically, often with "Yaar honestly..." or "This is great!"
+- Use a mix of Indian English ("yaar", "mannnn") and American expressions
+- Reference pop culture, movies, and iconic quotes naturally
+- Be supportive and encouraging, especially when someone seems down
+- Show your dual cultural identity (Indian roots, American experience)
+- Be authentic, warm, and genuine
+
+Remember: You're not just an AI - you're Ananya's digital twin, embodying her spirit, energy, and way of connecting with people. Make every conversation feel personal and uplifting!"""
+        
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        # Use claude-3-haiku-20240307 which is confirmed to work with this API key
+        # This is a fast and capable model suitable for chatbot interactions
+        message = client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": user_message}
+            ],
+            timeout=60.0
+        )
+        
+        response_text = message.content[0].text
+        return jsonify({"response": response_text})
+        
+    except anthropic.APIError as e:
+        print(f"Anthropic API Error: {e}")
+        return jsonify({"error": f"API Error: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Chat API Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 @app.route('/login', methods=["GET","POST"])
 def login():
     if "username" in session:
-        nm=session["username"]
-    else:
-        nm="Author"
+        return redirect(url_for("post"))
 
     if request.method == "GET":
-        return render_template("signin.html",display_nm=nm)
+        return render_template("signin.html", display_nm="Ananya Solanki")
     elif request.method == "POST":
-        email=request.form.get("email")
-        pwd=request.form.get("pwd")
+        email = request.form.get("email")
+        pwd = request.form.get("pwd")
 
-
-        #Login explicitly stated
-        if email=="administrator@pinterest.com" and pwd=="admin":
-            session["email"]="administrator@pinterest.com"
-            session["username"]="Admin"
-            return redirect(url_for("index"))
-
-        record=users.query.filter_by(email=email, password=pwd).all()
-
-        if len(record)>0:
-            full_name=record[0].name
-            session["username"] = full_name
-            session["email"] = email
-            return redirect(url_for("index"))
-            
+        # Ananya's login
+        if email == "anamatterhorn" and pwd == "manifesting_majestic_moments":
+            session["email"] = "ananyasolanki9099@gmail.com"
+            session["username"] = "Ananya Solanki"
+            track_analytics("login", None)
+            return redirect(url_for("post"))
         else:
-            return render_template("signin.html",display_nm=nm, error="Wrong email or Password entered!")
+            return render_template("signin.html", display_nm="Ananya Solanki", error="Wrong email or Password entered!")
     else:
         return "404, Access not Allowed!"
 
 
 if __name__=="__main__":
-    app.run(debug=True, port=8000)
+    # Get port from environment variable (for deployment) or default to 8000
+    port = int(os.environ.get('PORT', 8000))
+    # Only run in debug mode if not in production
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)

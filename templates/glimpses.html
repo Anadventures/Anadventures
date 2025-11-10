@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<section class="mt-4 mb-5">
+    <div class="container-fluid mb-4">
+        <h1 class="font-weight-bold title text-center mb-3">Glimpses - by Ana</h1>
+        <p class="text-center text-muted mb-5">A visual journey through moments, thoughts, and experiences</p>
+        
+        {% if posts %}
+        <div class="container-fluid mb-5">
+            <div class="card-columns">
+                {% for post in posts %}
+                <div class="card card-pin">
+                    <div class="image-container">
+                        {% if post.image_path %}
+                        <img class="card-img image" src="/{{ post.image_path }}" alt="{{ post.title }}" style="width: 100%; height: auto;">
+                        {% else %}
+                        <div class="card-img bg-light" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-image fa-4x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <div class="overlay1">
+                            <a href="{{ url_for('glimpse_post', post_id=post.id) }}" class="btn image-save">View</a>
+                        </div>
+                        <div class="overlay2">
+                            <div class="d-flex justify-content-end">
+                                <button class="image-share mr-2" onclick="sharePost({{ post.id }})" title="Share">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                                {% if post.image_path %}
+                                <a href="{{ url_for('download_image', post_id=post.id) }}" class="image-share mr-2" title="Download Image">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="image-share" title="Download PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="overlay3">
+                            <span class="badge badge-primary">{{ post.category }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <a class="card-link" href="{{ url_for('glimpse_post', post_id=post.id) }}">
+                            <h5 class="card-title title">{{ post.title }}</h5>
+                        </a>
+                        <p class="card-text text-muted small">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</p>
+                        <small class="text-muted">{{ post.created_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-images fa-5x text-muted mb-4"></i>
+            <h3 class="text-muted">No glimpses yet</h3>
+            <p class="text-muted">Check back soon for visual stories!</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<script>
+function sharePost(postId) {
+    const url = window.location.origin + '/glimpses/' + postId;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Glimpse by Ana',
+            text: 'Check out this glimpse!',
+            url: url
+        }).then(() => {
+            fetch('/share/' + postId);
+        }).catch(err => console.log('Error sharing', err));
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Link copied to clipboard!');
+            fetch('/share/' + postId);
+        });
+    }
+}
+</script>
+
+{% endblock %}
+

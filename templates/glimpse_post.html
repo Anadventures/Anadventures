@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<section class="mt-4 mb-5">
+    <div class="container-fluid mb-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <a href="{{ url_for('glimpses') }}" class="btn btn-outline-secondary mb-4">
+                    <i class="fas fa-arrow-left"></i> Back to Glimpses
+                </a>
+                
+                <div class="card shadow-lg border-0">
+                    {% if post.image_path %}
+                    <img src="/{{ post.image_path }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 600px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body p-5">
+                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-primary">{{ post.category }}</span>
+                                <small class="text-muted ml-2">{{ post.created_at }}</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary mr-2" onclick="sharePost({{ post.id }})">
+                                    <i class="fas fa-share-alt"></i> Share
+                                </button>
+                                {% if post.image_path %}
+                                <a href="{{ url_for('download_image', post_id=post.id) }}" class="btn btn-sm btn-outline-success mr-2">
+                                    <i class="fas fa-download"></i> Download Image
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-file-pdf"></i> Download PDF
+                                </a>
+                            </div>
+                        </div>
+                        <h1 class="font-weight-bold mb-4">{{ post.title }}</h1>
+                        <div class="post-content" style="line-height: 1.8; font-size: 1.1rem;">
+                            {{ post.content|replace('\n', '<br>')|safe }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('glimpses') }}" class="btn btn-primary">View All Glimpses</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+function sharePost(postId) {
+    const url = window.location.href;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ post.title }}',
+            text: '{{ post.content[:100] }}...',
+            url: url
+        }).then(() => {
+            fetch('/share/' + postId);
+        }).catch(err => console.log('Error sharing', err));
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Link copied to clipboard!');
+            fetch('/share/' + postId);
+        });
+    }
+}
+</script>
+
+{% endblock %}
+

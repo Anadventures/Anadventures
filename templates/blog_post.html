@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<section class="mt-4 mb-5">
+    <div class="container-fluid mb-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <a href="{{ url_for('blog') }}" class="btn btn-outline-secondary mb-4">
+                    <i class="fas fa-arrow-left"></i> Back to Blog
+                </a>
+                
+                <div class="card shadow-lg border-0">
+                    {% if post.image_path %}
+                    <img src="/{{ post.image_path }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 400px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body p-5">
+                        <div class="mb-3">
+                            <span class="badge badge-primary">{{ post.category }}</span>
+                            <small class="text-muted ml-2">{{ post.created_at }}</small>
+                        </div>
+                        <h1 class="font-weight-bold mb-4">{{ post.title }}</h1>
+                        <div class="post-content" style="line-height: 1.8; font-size: 1.1rem;">
+                            {{ post.content|replace('\n', '<br>')|safe }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('blog') }}" class="btn btn-primary">View All Posts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
