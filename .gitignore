@@ -37,6 +37,7 @@ instance/
 .env.local
 .env.*.local
 config.py
+RENDER_ENV_VARS.txt
 
 # IDE
 .vscode/

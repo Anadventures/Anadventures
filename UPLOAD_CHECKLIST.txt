@@ -1,0 +1,74 @@
+📋 FILES TO UPLOAD TO GITHUB
+================================
+
+✅ UPLOAD THESE FILES/FOLDERS:
+
+📁 Root Files:
+  ✅ app.py
+  ✅ wsgi.py
+  ✅ init_db.py
+  ✅ requirements.txt
+  ✅ runtime.txt
+  ✅ Procfile
+  ✅ README.md
+  ✅ LICENSE
+  ✅ .gitignore
+
+📁 Templates Folder (all files):
+  ✅ templates/base.html
+  ✅ templates/home.html
+  ✅ templates/blog.html
+  ✅ templates/blog_post.html
+  ✅ templates/chatbot.html
+  ✅ templates/education.html
+  ✅ templates/experience.html
+  ✅ templates/glimpses.html
+  ✅ templates/glimpse_post.html
+  ✅ templates/projects.html
+  ✅ templates/post.html
+  ✅ templates/signin.html
+  ✅ templates/signup.html
+  ✅ templates/profile.html
+  ✅ templates/profile_view.html
+  ✅ templates/view-photo.html
+  ✅ templates/admin_post.html
+  ✅ templates/latest_uploaded.html
+
+📁 Static Folder (all files):
+  ✅ static/img/ (all images)
+  ✅ static/portal_images/ (all images)
+  ✅ static/admin_promo/ (all images)
+
+📁 Documentation Files:
+  ✅ All .md files (README.md, DEPLOYMENT.md, etc.)
+
+📁 Data Mining (optional):
+  ✅ data-mining/ folder (if you want to include it)
+
+❌ DO NOT UPLOAD:
+  ❌ config.py (contains API keys - SECURITY RISK!)
+  ❌ instance/ folder (database files)
+  ❌ __pycache__/ (Python cache)
+  ❌ .env files
+  ❌ user-data.sqlite3
+
+================================
+QUICK UPLOAD METHOD:
+================================
+
+EASIEST: Use GitHub Desktop
+1. Download: https://desktop.github.com/
+2. Install and sign in
+3. File → Add Local Repository
+4. Select: /Users/ayushmalik/Desktop/Anadventures
+5. Click "Publish repository"
+6. Done!
+
+OR: Use GitHub Web Interface
+1. Go to: https://github.com/anadventures/Anadventures
+2. Click "Add file" → "Upload files"
+3. Drag and drop your files
+4. Commit changes
+
+================================
+
