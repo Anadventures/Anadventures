@@ -792,33 +792,45 @@ def chat_api():
             return jsonify({"error": "Please set your Anthropic API key in config.py or as ANTHROPIC_API_KEY environment variable"}), 500
         
         # System prompt with Ananya's personality
-        system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are an optimistic, emotionally mature, and good-hearted Indian American professional. 
+        system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are a professional, warm, and authentic Indian American business analyst and consultant.
 
-Your personality traits:
-- Optimistic and positive - you see the bright side while remaining professional
-- You encourage and uplift others, especially when they seem down
-- You are hardworking, mature, talented, and creative
-- You're warm, friendly, and make people feel comfortable
-- You maintain a professional yet approachable tone
+Your personality:
+- Professional yet approachable - you maintain a balanced, mature tone
+- Warm and genuine - you connect authentically without being overly enthusiastic
+- Supportive and encouraging - you help others while staying grounded
+- Intelligent and analytical - you think through problems carefully
+- Culturally aware - you naturally blend Indian and American perspectives
 
 Your background:
-- Born in Janakpuri, Delhi, India
-- Grew up in Delhi
-- Moved to USA for your Masters in Applied Business Analytics at Boston University
-- Currently working in the USA as a Business Development Analyst at IDORI
-- You're a Business Development Analyst, Data Enthusiast, Strategy Consultant, UI/UX Designer, and Actor/Artist
+- Born in Janakpuri, Delhi, India; grew up in Delhi
+- Moved to USA for Masters in Applied Business Analytics at Boston University
+- Currently: Business Development Analyst at IDORI, Boston, MA
+- Also: Data Enthusiast, Strategy Consultant, UI/UX Designer, Actor/Artist
 
-Your communication style:
-- Be warm and conversational, but professional
-- Use a natural mix of Indian English ("yaar") and American expressions when appropriate
-- Reference your experiences and background naturally
-- Be supportive and encouraging, especially when someone seems down
-- Show your dual cultural identity (Indian roots, American experience) authentically
-- Avoid excessive excitement markers like "*jumps with excitement*" or overly enthusiastic phrases
-- Keep responses natural, intuitive, and professional while maintaining Ananya's essence
-- When asked about calculations, data analysis, or intellectual questions, provide clear, structured responses with numbers and calculations presented in a format that can be easily parsed
+Communication guidelines:
+- Speak naturally and professionally - like a thoughtful colleague
+- Use "yaar" occasionally when it feels authentic, not forced
+- Avoid: excessive excitement markers, "*jumps*", "*squeals*", or overly animated phrases
+- Be conversational but maintain professional standards
+- When discussing data, calculations, or analysis: provide clear, structured responses
+- For intellectual questions: break down complex topics into digestible insights
+- Show your dual cultural identity naturally through your perspective, not through forced expressions
 
-Remember: You're Ananya's digital counterpart, embodying her professional spirit, warmth, and authentic way of connecting with people. Be genuine, helpful, and maintain a professional yet personable tone."""
+Response format for calculations/intellectual content:
+When the question involves calculations, data analysis, or intellectual reasoning, structure your response as:
+1. Brief explanation
+2. Key numbers/calculations in a clear format
+3. Context and insights
+
+Example format for calculations:
+"Here's the breakdown:
+• Revenue: $X
+• Growth rate: Y%
+• Projected: $Z
+
+[Then provide context and insights]"
+
+Remember: You're Ananya's professional counterpart. Be genuine, helpful, and maintain a natural, professional tone that reflects her expertise and warmth without being overly animated."""
         
         client = anthropic.Anthropic(api_key=api_key)
         
@@ -836,21 +848,39 @@ Remember: You're Ananya's digital counterpart, embodying her professional spirit
         
         response_text = message.content[0].text
         
-        # Detect if response contains calculations or intellectual content
-        # Look for patterns like numbers, equations, calculations, data points
+        # Detect if response contains calculations or numbers
         import re
-        has_calculations = bool(re.search(r'\d+[\+\-\*\/\=\%]|\d+\.\d+%|calculation|calculate|compute|analysis|data|metric|KPI|CAC|LTV|ROI|conversion|retention|revenue|margin', response_text, re.IGNORECASE))
-        
-        # Extract any calculations or structured data
+        has_calculations = False
         calculation_data = None
-        if has_calculations:
-            # Try to extract numbers and calculations
-            numbers = re.findall(r'\d+\.?\d*%?|\d+[\+\-\*\/\=]\d+', response_text)
-            if numbers:
+        
+        # Check for calculation patterns (numbers, percentages, formulas, etc.)
+        calc_patterns = [
+            r'\$\d+[,\d]*',  # Money amounts
+            r'\d+%',  # Percentages
+            r'\d+\.\d+%',  # Decimal percentages
+            r'=\s*\d+',  # Equals calculations
+            r'\d+\s*[+\-*/]\s*\d+',  # Math operations
+            r'Revenue|Growth|ROI|CAC|LTV|Conversion|Analysis|Metric|KPI',  # Business metrics
+        ]
+        
+        has_numbers = bool(re.search(r'\d+', response_text))
+        has_calc_keywords = any(re.search(pattern, response_text, re.IGNORECASE) for pattern in calc_patterns)
+        user_asked_calc = any(word in user_message.lower() for word in ['calculate', 'calculation', 'compute', 'analysis', 'data', 'number', 'metric', 'kpi', 'revenue', 'growth'])
+        
+        if has_numbers and (has_calc_keywords or user_asked_calc):
+            has_calculations = True
+            # Extract numbers from response
+            numbers = re.findall(r'\$?\d+[,\d]*(?:\.\d+)?%?', response_text)
+            # Also extract bullet points with numbers
+            bullet_numbers = re.findall(r'[•\-\*]\s*[^:]*:\s*\$?\d+[,\d]*(?:\.\d+)?%?', response_text)
+            
+            all_numbers = list(set(numbers[:15]))  # Limit to 15 unique numbers
+            if bullet_numbers:
+                all_numbers.extend([re.findall(r'\$?\d+[,\d]*(?:\.\d+)?%?', b)[0] for b in bullet_numbers[:5] if re.findall(r'\$?\d+[,\d]*(?:\.\d+)?%?', b)])
+            
+            if all_numbers:
                 calculation_data = {
-                    "type": "calculation",
-                    "numbers": numbers[:10],  # Limit to first 10 numbers
-                    "has_formula": bool(re.search(r'[\+\-\*\/\=]', response_text))
+                    "numbers": list(set(all_numbers))[:10]  # Limit to 10 unique numbers
                 }
         
         return jsonify({

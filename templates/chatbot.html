@@ -185,44 +185,62 @@
     }
     
     .calculation-box {
-        background: rgba(255,255,255,0.2);
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 12px;
-        padding: 20px;
-        margin-top: 15px;
-        backdrop-filter: blur(10px);
+        background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%);
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: 16px;
+        padding: 24px;
+        margin-top: 20px;
+        backdrop-filter: blur(15px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        animation: fadeInScale 0.5s ease-out;
+    }
+    
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.9) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
     }
     
     .calculation-box h4 {
         color: white;
-        margin-bottom: 15px;
-        font-size: 1.1rem;
+        margin-bottom: 18px;
+        font-size: 1.15rem;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     .calculation-numbers {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 10px;
+        gap: 12px;
+        margin-top: 12px;
     }
     
     .calculation-number {
-        background: rgba(255,255,255,0.25);
-        padding: 8px 15px;
-        border-radius: 20px;
+        background: rgba(255,255,255,0.3);
+        padding: 10px 18px;
+        border-radius: 25px;
         color: white;
-        font-weight: bold;
-        font-size: 0.95rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
+        font-weight: 600;
+        font-size: 1rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255,255,255,0.2);
+        cursor: default;
     }
     
     .calculation-number:hover {
-        transform: scale(1.05);
-        background: rgba(255,255,255,0.35);
+        transform: translateY(-2px) scale(1.05);
+        background: rgba(255,255,255,0.4);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
     
     .message-content {
@@ -311,14 +329,14 @@
     <div class="container-fluid mb-4">
         <div class="chatbot-container">
             <div class="chatbot-header">
-                <h2>✨ Ms. Matterhorn ✨</h2>
-                <p>Ananya's AI Counterpart - Let's chat!</p>
+                <h2>💼 Ms. Matterhorn</h2>
+                <p>Ananya's AI Counterpart - Professional & Authentic</p>
             </div>
             
             <div class="chatbot-messages" id="chatMessages">
                 <div class="welcome-message">
                     <h3>Hello! 👋</h3>
-                    <p>I'm Ms. Matterhorn, Ananya's AI counterpart. I'm here to help with questions about career, data analysis, projects, or just have a friendly conversation. Feel free to ask me anything!</p>
+                    <p>I'm Ms. Matterhorn, Ananya's AI counterpart. I'm here to help with questions about career, data analysis, projects, or just have a thoughtful conversation. Feel free to ask me anything!</p>
                 </div>
             </div>
             
