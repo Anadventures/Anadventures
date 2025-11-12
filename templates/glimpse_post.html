@@ -19,6 +19,11 @@
                             <div>
                                 <span class="badge badge-primary">{{ post.category }}</span>
                                 <small class="text-muted ml-2">{{ post.created_at }}</small>
+                                {% if post.pdf_path %}
+                                <span class="badge badge-info ml-2">
+                                    <i class="fas fa-file-pdf"></i> PDF Available
+                                </span>
+                                {% endif %}
                             </div>
                             <div>
                                 <button class="btn btn-sm btn-outline-primary mr-2" onclick="sharePost({{ post.id }})">
@@ -29,9 +34,18 @@
                                     <i class="fas fa-download"></i> Download Image
                                 </a>
                                 {% endif %}
-                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-file-pdf"></i> Download PDF
+                                {% if post.pdf_path %}
+                                <a href="/{{ post.pdf_path }}" target="_blank" class="btn btn-sm btn-outline-info mr-2">
+                                    <i class="fas fa-file-pdf"></i> View PDF
                                 </a>
+                                <a href="/{{ post.pdf_path }}" download class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-download"></i> Download PDF
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-file-pdf"></i> Download as PDF
+                                </a>
+                                {% endif %}
                             </div>
                         </div>
                         <h1 class="font-weight-bold mb-4">{{ post.title }}</h1>

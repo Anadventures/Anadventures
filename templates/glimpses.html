@@ -33,13 +33,24 @@
                                     <i class="fas fa-download"></i>
                                 </a>
                                 {% endif %}
-                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="image-share" title="Download PDF">
+                                {% if post.pdf_path %}
+                                <a href="/{{ post.pdf_path }}" target="_blank" class="image-share mr-2" title="View PDF">
                                     <i class="fas fa-file-pdf"></i>
                                 </a>
+                                {% else %}
+                                <a href="{{ url_for('download_pdf', post_id=post.id) }}" class="image-share" title="Download as PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="overlay3">
                             <span class="badge badge-primary">{{ post.category }}</span>
+                            {% if post.pdf_path %}
+                            <span class="badge badge-info ml-1">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </span>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="card-body">

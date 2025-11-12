@@ -183,6 +183,128 @@
         font-size: 1rem;
         line-height: 1.6;
     }
+    
+    .calculation-box {
+        background: rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .calculation-box h4 {
+        color: white;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .calculation-numbers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .calculation-number {
+        background: rgba(255,255,255,0.25);
+        padding: 8px 15px;
+        border-radius: 20px;
+        color: white;
+        font-weight: bold;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .calculation-number:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.35);
+    }
+    
+    .message-content {
+        animation: slideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .message.bot .message-content {
+        animation: slideInLeft 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .message.user .message-content {
+        animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+    
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+    
+    .chatbot-messages::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .chatbot-messages::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+    
+    .chatbot-messages::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.3);
+        border-radius: 10px;
+    }
+    
+    .chatbot-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.5);
+    }
+    
+    .chatbot-input:focus {
+        transform: scale(1.02);
+        transition: transform 0.2s;
+    }
+    
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.7;
+        }
+    }
 </style>
 
 <section class="mt-4 mb-5">
@@ -195,8 +317,8 @@
             
             <div class="chatbot-messages" id="chatMessages">
                 <div class="welcome-message">
-                    <h3>Hey there! 👋</h3>
-                    <p>I'm Ms. Matterhorn, Ananya's AI counterpart! I'm here to chat, help, and spread some positive vibes. Ask me anything - whether it's about career advice, creative projects, or just a friendly conversation. Let's go! 🚀</p>
+                    <h3>Hello! 👋</h3>
+                    <p>I'm Ms. Matterhorn, Ananya's AI counterpart. I'm here to help with questions about career, data analysis, projects, or just have a friendly conversation. Feel free to ask me anything!</p>
                 </div>
             </div>
             
@@ -232,7 +354,7 @@ const sendBtn = document.getElementById('sendBtn');
 const typingIndicator = document.getElementById('typingIndicator');
 const welcomeMessage = document.querySelector('.welcome-message');
 
-function addMessage(content, isUser) {
+function addMessage(content, isUser, calculationData = null) {
     // Remove welcome message if it exists
     if (welcomeMessage && welcomeMessage.parentNode) {
         welcomeMessage.remove();
@@ -243,13 +365,46 @@ function addMessage(content, isUser) {
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.textContent = content;
+    
+    // Handle text content - preserve line breaks
+    const textContent = document.createElement('div');
+    textContent.style.whiteSpace = 'pre-wrap';
+    textContent.textContent = content;
+    contentDiv.appendChild(textContent);
+    
+    // Add calculation box if calculation data exists
+    if (calculationData && calculationData.numbers && calculationData.numbers.length > 0) {
+        const calcBox = document.createElement('div');
+        calcBox.className = 'calculation-box';
+        
+        const calcTitle = document.createElement('h4');
+        calcTitle.innerHTML = '<i class="fas fa-calculator"></i> Key Numbers & Calculations';
+        calcBox.appendChild(calcTitle);
+        
+        const numbersDiv = document.createElement('div');
+        numbersDiv.className = 'calculation-numbers';
+        
+        calculationData.numbers.forEach(num => {
+            const numSpan = document.createElement('span');
+            numSpan.className = 'calculation-number';
+            numSpan.textContent = num;
+            numbersDiv.appendChild(numSpan);
+        });
+        
+        calcBox.appendChild(numbersDiv);
+        contentDiv.appendChild(calcBox);
+    }
     
     messageDiv.appendChild(contentDiv);
     chatMessages.appendChild(messageDiv);
     
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    // Scroll to bottom with smooth animation
+    setTimeout(() => {
+        chatMessages.scrollTo({
+            top: chatMessages.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 100);
 }
 
 function showTyping() {
@@ -294,7 +449,9 @@ async function sendMessage(event) {
         sendBtn.disabled = false;
         
         if (response.ok && data.response) {
-            addMessage(data.response, false);
+            // Check if response has calculation data
+            const calcData = data.has_calculations && data.calculation_data ? data.calculation_data : null;
+            addMessage(data.response, false, calcData);
         } else {
             const errorMsg = data.error || 'Oops! Something went wrong. Please try again!';
             addMessage(`Sorry, there was an error: ${errorMsg}`, false);

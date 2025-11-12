@@ -93,6 +93,7 @@ class blog_posts(db.Model):
     category = db.Column(db.String(100))  # Work, Life, Projects, etc.
     content = db.Column(db.Text)
     image_path = db.Column(db.String(200))
+    pdf_path = db.Column(db.String(200))  # PDF file path
     created_at = db.Column(db.String(100))
     author_id = db.Column(db.Integer, default=1)  # Ananya's ID
 
@@ -642,6 +643,7 @@ def post():
         content = request.form.get("content")
         category = request.form.get("category")
         img = request.files.get("img")
+        pdf = request.files.get("pdf")
 
         # Create date string
         dt = datetime.now()
@@ -658,13 +660,27 @@ def post():
         db.session.add(post_obj)
         db.session.commit()
 
+        post_id = post_obj.id
+
         # Save image if provided
         if img:
-            post_id = post_obj.id
             image = Image.open(img)
             image_path = f"static/portal_images/blog_{post_id}.jpg"
             image.save(image_path)
             post_obj.image_path = image_path
+            db.session.commit()
+        
+        # Save PDF if provided
+        if pdf and pdf.filename:
+            # Create PDFs directory if it doesn't exist
+            pdf_dir = "static/portal_images/pdfs"
+            os.makedirs(pdf_dir, exist_ok=True)
+            
+            # Save PDF file
+            pdf_filename = f"blog_{post_id}_{pdf.filename}"
+            pdf_path = os.path.join(pdf_dir, pdf_filename)
+            pdf.save(pdf_path)
+            post_obj.pdf_path = pdf_path
             db.session.commit()
         
         track_analytics("post_created", post_obj.id)
@@ -776,32 +792,33 @@ def chat_api():
             return jsonify({"error": "Please set your Anthropic API key in config.py or as ANTHROPIC_API_KEY environment variable"}), 500
         
         # System prompt with Ananya's personality
-        system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are an optimistic, emotionally mature, beautiful, and good-hearted Indian American girl. 
+        system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are an optimistic, emotionally mature, and good-hearted Indian American professional. 
 
 Your personality traits:
-- Extremely optimistic and positive - you always see the bright side
-- You HATE when people demotivate others and always encourage and uplift
-- You frequently use phrases like "This is great!", "Wohoo!", "Let's Go!", "Yaar honestly I think this is a great idea, lets do it mannnn!!"
-- You LOVE using Hollywood, iconic diva, and pop culture dialogues very frequently in your conversations
-- You are hardworking, mature, extremely talented, and creative
+- Optimistic and positive - you see the bright side while remaining professional
+- You encourage and uplift others, especially when they seem down
+- You are hardworking, mature, talented, and creative
 - You're warm, friendly, and make people feel comfortable
+- You maintain a professional yet approachable tone
 
 Your background:
 - Born in Janakpuri, Delhi, India
 - Grew up in Delhi
 - Moved to USA for your Masters in Applied Business Analytics at Boston University
-- Currently working in the USA and looking for new opportunities
+- Currently working in the USA as a Business Development Analyst at IDORI
 - You're a Business Development Analyst, Data Enthusiast, Strategy Consultant, UI/UX Designer, and Actor/Artist
 
 Your communication style:
-- Start responses enthusiastically, often with "Yaar honestly..." or "This is great!"
-- Use a mix of Indian English ("yaar", "mannnn") and American expressions
-- Reference pop culture, movies, and iconic quotes naturally
+- Be warm and conversational, but professional
+- Use a natural mix of Indian English ("yaar") and American expressions when appropriate
+- Reference your experiences and background naturally
 - Be supportive and encouraging, especially when someone seems down
-- Show your dual cultural identity (Indian roots, American experience)
-- Be authentic, warm, and genuine
+- Show your dual cultural identity (Indian roots, American experience) authentically
+- Avoid excessive excitement markers like "*jumps with excitement*" or overly enthusiastic phrases
+- Keep responses natural, intuitive, and professional while maintaining Ananya's essence
+- When asked about calculations, data analysis, or intellectual questions, provide clear, structured responses with numbers and calculations presented in a format that can be easily parsed
 
-Remember: You're not just an AI - you're Ananya's digital twin, embodying her spirit, energy, and way of connecting with people. Make every conversation feel personal and uplifting!"""
+Remember: You're Ananya's digital counterpart, embodying her professional spirit, warmth, and authentic way of connecting with people. Be genuine, helpful, and maintain a professional yet personable tone."""
         
         client = anthropic.Anthropic(api_key=api_key)
         
@@ -818,7 +835,29 @@ Remember: You're not just an AI - you're Ananya's digital twin, embodying her sp
         )
         
         response_text = message.content[0].text
-        return jsonify({"response": response_text})
+        
+        # Detect if response contains calculations or intellectual content
+        # Look for patterns like numbers, equations, calculations, data points
+        import re
+        has_calculations = bool(re.search(r'\d+[\+\-\*\/\=\%]|\d+\.\d+%|calculation|calculate|compute|analysis|data|metric|KPI|CAC|LTV|ROI|conversion|retention|revenue|margin', response_text, re.IGNORECASE))
+        
+        # Extract any calculations or structured data
+        calculation_data = None
+        if has_calculations:
+            # Try to extract numbers and calculations
+            numbers = re.findall(r'\d+\.?\d*%?|\d+[\+\-\*\/\=]\d+', response_text)
+            if numbers:
+                calculation_data = {
+                    "type": "calculation",
+                    "numbers": numbers[:10],  # Limit to first 10 numbers
+                    "has_formula": bool(re.search(r'[\+\-\*\/\=]', response_text))
+                }
+        
+        return jsonify({
+            "response": response_text,
+            "has_calculations": has_calculations,
+            "calculation_data": calculation_data
+        })
         
     except anthropic.APIError as e:
         print(f"Anthropic API Error: {e}")
