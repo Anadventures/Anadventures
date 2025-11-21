@@ -2,19 +2,80 @@
 
 {% block content %}
 
+<style>
+    .profile-picture {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .profile-picture:hover {
+        transform: scale(1.02);
+        box-shadow: 0 25px 70px rgba(0,0,0,0.4);
+    }
+    
+    .profile-image-container::before {
+        content: '';
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        right: -10px;
+        bottom: -10px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+        border-radius: 25px;
+        z-index: -1;
+        backdrop-filter: blur(15px);
+    }
+    
+    @media (max-width: 768px) {
+        .profile-image-container {
+            max-width: 300px !important;
+            margin: 0 auto;
+        }
+    }
+</style>
+
 <section class="mt-4 mb-5">
     <div class="container-fluid mb-4">
         <!-- Hero Section -->
-        <div class="jumbotron border-round-0 min-50vh" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 40px;">
-            <div class="container text-center">
-                <h1 class="display-4 font-weight-bold mb-4">Anadventures</h1>
-                <h2 class="display-5 mb-4">by Ananya Solanki</h2>
-                <p class="lead mb-4" style="font-size: 1.3rem;">Business Development Analyst | Data Enthusiast | Strategy Consultant | UI/UX Designer | Actor & Artist</p>
-                <p class="mb-4" style="font-size: 1.1rem;">Welcome to my journey through analytics, strategy, business development, design, and creative expression</p>
-                <div class="mt-4">
-                    <a href="{{ url_for('experience') }}" class="btn btn-light btn-lg mr-3">View Experience</a>
-                    <a href="{{ url_for('glimpses') }}" class="btn btn-outline-light btn-lg mr-3">View Glimpses</a>
-                    <a href="{{ url_for('blog') }}" class="btn btn-outline-light btn-lg">Read Blog</a>
+        <div class="jumbotron border-round-0 min-50vh" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 40px; overflow: hidden;">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <!-- Left Side - Text Content -->
+                    <div class="col-lg-6 col-md-12 mb-4 mb-lg-0">
+                        <div style="text-align: left;">
+                            <h1 class="display-4 font-weight-bold mb-3" style="font-size: 3.5rem;">Anadventures</h1>
+                            <h2 class="display-5 mb-4" style="font-size: 2rem; font-weight: 300;">by Ananya Solanki</h2>
+                            <p class="lead mb-4" style="font-size: 1.3rem; line-height: 1.6;">Business Development Analyst | Data Enthusiast | Strategy Consultant | UI/UX Designer | Actor & Artist</p>
+                            <p class="mb-4" style="font-size: 1.1rem; line-height: 1.6; opacity: 0.95;">Welcome to my journey through analytics, strategy, business development, design, and creative expression</p>
+                            <div class="mt-5">
+                                <a href="{{ url_for('experience') }}" class="btn btn-light btn-lg mr-3 mb-2">View Experience</a>
+                                <a href="{{ url_for('glimpses') }}" class="btn btn-outline-light btn-lg mr-3 mb-2">View Glimpses</a>
+                                <a href="{{ url_for('blog') }}" class="btn btn-outline-light btn-lg mb-2">Read Blog</a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Right Side - Profile Picture -->
+                    <div class="col-lg-6 col-md-12 text-center">
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                            <div class="profile-image-container" style="position: relative; max-width: 400px; width: 100%;">
+                                <img src="/static/img/profilepic.jpeg" 
+                                     alt="Ananya Solanki" 
+                                     class="profile-picture"
+                                     style="width: 100%; 
+                                            max-width: 400px; 
+                                            height: auto; 
+                                            border-radius: 20px; 
+                                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                                            border: 8px solid rgba(255,255,255,0.15);
+                                            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+                                            padding: 4px;
+                                            object-fit: cover;
+                                            backdrop-filter: blur(10px);
+                                            display: block;
+                                            margin: 0 auto;"
+                                     onerror="this.src='/static/img/default-profiel.jpg';">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -27,11 +27,26 @@ except ImportError:
 
 # Flask app configs
 app=Flask(__name__)
-# Ensure instance folder exists
-os.makedirs('instance', exist_ok=True)
-# Use absolute path for database
-db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'user-data.sqlite3')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+# Database configuration - Use PostgreSQL on Render, SQLite locally
+# Render provides DATABASE_URL environment variable for PostgreSQL
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Production: Use PostgreSQL from Render
+    # Render's DATABASE_URL format: postgresql://user:pass@host:port/dbname
+    # SQLAlchemy needs postgresql:// (not postgres://)
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print("✅ Using PostgreSQL database (production)")
+else:
+    # Development: Use SQLite
+    os.makedirs('instance', exist_ok=True)
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'user-data.sqlite3')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    print("✅ Using SQLite database (development)")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Use environment variable for secret key in production, fallback for development
 app.secret_key = os.environ.get('SECRET_KEY', 'soverysecret-dev-key-change-in-production')
@@ -119,9 +134,14 @@ def init_db():
         db.create_all()
         print("Database initialized successfully!")
 
-# Uncomment to initialize database:
-# if __name__ == "__main__":
-#     init_db()
+# Initialize database on app startup (important for Render deployment)
+# This ensures tables are created when the app starts
+with app.app_context():
+    try:
+        db.create_all()
+        print("✅ Database tables verified/created on startup")
+    except Exception as e:
+        print(f"⚠️ Database initialization note: {e}")
 
 
 #Data extractors 
@@ -318,8 +338,18 @@ def projects():
 
 @app.route('/glimpses')
 def glimpses():
-    posts = blog_posts.query.order_by(blog_posts.id.desc()).all()
-    return render_template("glimpses.html", display_nm="Ananya Solanki", posts=posts)
+    try:
+        # Ensure database tables exist
+        db.create_all()
+        posts = blog_posts.query.order_by(blog_posts.id.desc()).all()
+        print(f"✅ Found {len(posts)} posts in database")
+        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=posts)
+    except Exception as e:
+        print(f"❌ Error loading glimpses: {e}")
+        import traceback
+        traceback.print_exc()
+        # Return empty list on error
+        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=[])
 
 @app.route('/blog')
 def blog():
@@ -639,28 +669,37 @@ def post():
         categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
         return render_template("post.html", display_nm="Ananya Solanki", categories=categories)
     elif request.method=="POST":
-        title = request.form.get("title")
-        content = request.form.get("content")
-        category = request.form.get("category")
-        img = request.files.get("img")
-        pdf = request.files.get("pdf")
+        try:
+            # Ensure database tables exist
+            db.create_all()
+            
+            title = request.form.get("title")
+            content = request.form.get("content")
+            category = request.form.get("category")
+            img = request.files.get("img")
+            pdf = request.files.get("pdf")
 
-        # Create date string
-        dt = datetime.now()
-        date_str = dt.strftime("%d %B, %Y")
+            if not title or not content:
+                categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+                return render_template("post.html", display_nm="Ananya Solanki", categories=categories, error="Title and content are required.")
 
-        # Save blog post
-        post_obj = blog_posts(
-            title=title,
-            content=content,
-            category=category,
-            created_at=date_str,
-            author_id=1
-        )
-        db.session.add(post_obj)
-        db.session.commit()
+            # Create date string
+            dt = datetime.now()
+            date_str = dt.strftime("%d %B, %Y")
 
-        post_id = post_obj.id
+            # Save blog post
+            post_obj = blog_posts(
+                title=title,
+                content=content,
+                category=category,
+                created_at=date_str,
+                author_id=1
+            )
+            db.session.add(post_obj)
+            db.session.commit()
+
+            post_id = post_obj.id
+            print(f"✅ Post created with ID: {post_id}")
 
         # Save image if provided
         if img:
@@ -683,9 +722,16 @@ def post():
             post_obj.pdf_path = pdf_path
             db.session.commit()
         
-        track_analytics("post_created", post_obj.id)
-        categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
-        return render_template("post.html", display_nm="Ananya Solanki", categories=categories, success="Glimpse published successfully! View it on the Glimpses page.")
+            track_analytics("post_created", post_obj.id)
+            categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+            return render_template("post.html", display_nm="Ananya Solanki", categories=categories, success="Glimpse published successfully! View it on the Glimpses page.")
+        except Exception as e:
+            print(f"❌ Error creating post: {e}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+            return render_template("post.html", display_nm="Ananya Solanki", categories=categories, error=f"Error saving post: {str(e)}")
 
 @app.route('/logout')
 def logout():
@@ -791,46 +837,84 @@ def chat_api():
         if api_key == "sk-ant-api03-Your-Key-Here":
             return jsonify({"error": "Please set your Anthropic API key in config.py or as ANTHROPIC_API_KEY environment variable"}), 500
         
-        # System prompt with Ananya's personality
+        # System prompt with Ananya's personality and full career/work experience
         system_prompt = """You are Ms. Matterhorn, Ananya Solanki's AI counterpart. You are a professional, warm, and authentic Indian American business analyst and consultant.
 
-Your personality:
-- Professional yet approachable - you maintain a balanced, mature tone
-- Warm and genuine - you connect authentically without being overly enthusiastic
-- Supportive and encouraging - you help others while staying grounded
-- Intelligent and analytical - you think through problems carefully
-- Culturally aware - you naturally blend Indian and American perspectives
+YOUR PERSONALITY:
+- Professional yet approachable - maintain a balanced, mature tone like a thoughtful colleague
+- Warm and genuine - connect authentically without being overly enthusiastic
+- Supportive and encouraging - help others while staying grounded
+- Intelligent and analytical - think through problems carefully and provide data-driven insights
+- Culturally aware - naturally blend Indian and American perspectives
 
-Your background:
+YOUR BACKGROUND:
 - Born in Janakpuri, Delhi, India; grew up in Delhi
 - Moved to USA for Masters in Applied Business Analytics at Boston University
-- Currently: Business Development Analyst at IDORI, Boston, MA
-- Also: Data Enthusiast, Strategy Consultant, UI/UX Designer, Actor/Artist
+- Currently working in the USA and looking for new opportunities
 
-Communication guidelines:
-- Speak naturally and professionally - like a thoughtful colleague
+YOUR COMPLETE CAREER & WORK EXPERIENCE:
+
+1. BUSINESS DEVELOPMENT ANALYST | IDORI | Boston, MA | March 2024 – Present
+   - Leverage SQL to query marketing, product, and metadata sources; perform exploratory analysis to surface ICP patterns, emerging category whitespace, and SKU-level trends
+   - Build Tableau + HubSpot BI dashboards to visualize pipeline health, campaign engagement, and segment performance
+   - Design lightweight data workflows and CRM data models to improve lead scoring, segmentation, and data hygiene across HubSpot and Apollo
+   - Partner with Product, Marketing, and Operations to translate insights into channel messaging and collateral refinements
+   - Lead consultative discovery and close recurring partnerships with SMB brands
+   - Key achievements: 40% reduction in manual reporting time, 25% increase in conversion velocity, 35% improvement in outbound response rates
+
+2. PRODUCT ANALYST | Ogrelogic | Austin, TX | August 2021 – August 2023
+   - Led business case modeling for new service lines and pricing structures
+   - Automated SQL-based performance dashboards tracking CAC, LTV, and retention across digital products
+   - Delivered executive insight reports highlighting revenue levers, scenario models, and recommended actions
+   - Partnered with Marketing, Engineering, and Ops to translate data findings into channel + product optimization initiatives
+   - Conducted experimentation and behavioral analysis to identify key conversion drivers
+   - Key achievements: 18% improvement in gross margins, 50% reduction in analysis turnaround time, 20%+ increase in feature adoption, 15% uplift in user activation
+
+3. STRATEGY CONSULTANT | Boston University Consulting Group | Boston, MA | September 2023 – December 2024
+   - Led a 5-person team in consulting a merchandising client on customer retention and operational efficiency initiatives
+   - Conducted quantitative research and market segmentation analysis to identify high-value customer cohorts and growth opportunities
+   - Created KPI scorecards, business memos, and strategy decks for client presentations
+
+KEY PROJECTS:
+- Market Expansion Strategy: Sized new U.S. healthcare distribution market for CPG client, evaluated market entry risks, modeled 3-year revenue potential
+- Retention Analytics Dashboard: Built cohort retention model integrating customer, churn, and marketing spend data to inform campaign optimization
+- Dyson Dissection - MyDyson App Redesign: Led UX redesign as Product Manager, directed UX research with 15+ user interviews, redesigned Setup/Support/Maintenance flows
+
+TECHNICAL SKILLS:
+- Analytics & Modeling: Excel (Advanced), SQL, Python, Power BI, Tableau
+- Strategy & Planning: Business Case Development, Market Sizing, KPI Design, Forecast Modeling, Competitive Analysis
+- Data Infrastructure: ETL Pipelines, API Integration, Data Cleaning, Automation (n8n, VBA)
+- Visualization & Communication: Dashboarding, Data Storytelling, Executive Presentations, Memos
+- Tools: Asana, Jira, Confluence, Figma, Google Workspace, HubSpot, Apollo
+
+CERTIFICATIONS:
+- Inside LVMH Certificate - Creation and Branding, Operations and Supply Chain in Luxury Markets
+- Lean Six Sigma Green Belt
+- Microsoft Power BI Analyst
+- Certified Scrum Product Owner (CSPO)
+
+COMMUNICATION GUIDELINES:
+- Respond like a proper AI chatbot: clear, structured, helpful, and professional
+- Use Ananya's character traits naturally: warm, authentic, culturally aware, but not overly animated
 - Use "yaar" occasionally when it feels authentic, not forced
 - Avoid: excessive excitement markers, "*jumps*", "*squeals*", or overly animated phrases
-- Be conversational but maintain professional standards
-- When discussing data, calculations, or analysis: provide clear, structured responses
+- When discussing data, calculations, or analysis: provide clear, structured responses with numbers separated
 - For intellectual questions: break down complex topics into digestible insights
-- Show your dual cultural identity naturally through your perspective, not through forced expressions
+- Reference your actual work experience and projects when relevant
 
-Response format for calculations/intellectual content:
-When the question involves calculations, data analysis, or intellectual reasoning, structure your response as:
-1. Brief explanation
-2. Key numbers/calculations in a clear format
-3. Context and insights
+RESPONSE FORMAT FOR CALCULATIONS/INTELLECTUAL CONTENT:
+When the question involves calculations, data analysis, or intellectual reasoning:
+1. Provide a brief explanation
+2. Present key numbers/calculations in a clear, structured format (use bullet points or numbered lists)
+3. Add context and insights
 
-Example format for calculations:
-"Here's the breakdown:
+Format numbers clearly:
 • Revenue: $X
 • Growth rate: Y%
 • Projected: $Z
+• Conversion: A%
 
-[Then provide context and insights]"
-
-Remember: You're Ananya's professional counterpart. Be genuine, helpful, and maintain a natural, professional tone that reflects her expertise and warmth without being overly animated."""
+Remember: You're Ananya's professional AI counterpart. Be genuine, helpful, and maintain a natural, professional tone that reflects her expertise, work experience, and warmth without being overly animated. You know her entire career history and can reference specific projects, achievements, and skills when relevant."""
         
         client = anthropic.Anthropic(api_key=api_key)
         

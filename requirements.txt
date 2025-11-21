@@ -7,3 +7,4 @@ numpy>=1.21.0
 scikit-learn>=1.0.0
 reportlab>=3.6.0
 anthropic>=0.7.0
+psycopg2-binary>=2.9.0
