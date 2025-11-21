@@ -57,7 +57,7 @@
                     <div class="col-lg-6 col-md-12 text-center">
                         <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
                             <div class="profile-image-container" style="position: relative; max-width: 400px; width: 100%;">
-                                <img src="/static/img/profilepic.jpeg" 
+                                <img src="{{ url_for('static', filename='img/profilepic.jpeg') }}" 
                                      alt="Ananya Solanki" 
                                      class="profile-picture"
                                      style="width: 100%; 
@@ -72,7 +72,7 @@
                                             backdrop-filter: blur(10px);
                                             display: block;
                                             margin: 0 auto;"
-                                     onerror="this.src='/static/img/default-profiel.jpg';">
+                                     onerror="this.src='{{ url_for('static', filename='img/default-profiel.jpg') }}';">
                             </div>
                         </div>
                     </div>
