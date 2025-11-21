@@ -701,27 +701,27 @@ def post():
             post_id = post_obj.id
             print(f"✅ Post created with ID: {post_id}")
 
-        # Save image if provided
-        if img:
-            image = Image.open(img)
-            image_path = f"static/portal_images/blog_{post_id}.jpg"
-            image.save(image_path)
-            post_obj.image_path = image_path
-            db.session.commit()
-        
-        # Save PDF if provided
-        if pdf and pdf.filename:
-            # Create PDFs directory if it doesn't exist
-            pdf_dir = "static/portal_images/pdfs"
-            os.makedirs(pdf_dir, exist_ok=True)
+            # Save image if provided
+            if img:
+                image = Image.open(img)
+                image_path = f"static/portal_images/blog_{post_id}.jpg"
+                image.save(image_path)
+                post_obj.image_path = image_path
+                db.session.commit()
             
-            # Save PDF file
-            pdf_filename = f"blog_{post_id}_{pdf.filename}"
-            pdf_path = os.path.join(pdf_dir, pdf_filename)
-            pdf.save(pdf_path)
-            post_obj.pdf_path = pdf_path
-            db.session.commit()
-        
+            # Save PDF if provided
+            if pdf and pdf.filename:
+                # Create PDFs directory if it doesn't exist
+                pdf_dir = "static/portal_images/pdfs"
+                os.makedirs(pdf_dir, exist_ok=True)
+                
+                # Save PDF file
+                pdf_filename = f"blog_{post_id}_{pdf.filename}"
+                pdf_path = os.path.join(pdf_dir, pdf_filename)
+                pdf.save(pdf_path)
+                post_obj.pdf_path = pdf_path
+                db.session.commit()
+            
             track_analytics("post_created", post_obj.id)
             categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
             return render_template("post.html", display_nm="Ananya Solanki", categories=categories, success="Glimpse published successfully! View it on the Glimpses page.")
