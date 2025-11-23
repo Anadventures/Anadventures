@@ -14,7 +14,7 @@
                 <div class="card card-pin">
                     <div class="image-container">
                         {% if post.image_path %}
-                        <img class="card-img image" src="/{{ post.image_path }}" alt="{{ post.title }}" style="width: 100%; height: auto;">
+                        <img class="card-img image" src="{{ post.image_path if post.image_path.startswith('http') else '/' + post.image_path }}" alt="{{ post.title }}" style="width: 100%; height: auto;">
                         {% else %}
                         <div class="card-img bg-light" style="height: 300px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-image fa-4x text-muted"></i>
@@ -34,7 +34,7 @@
                                 </a>
                                 {% endif %}
                                 {% if post.pdf_path %}
-                                <a href="/{{ post.pdf_path }}" target="_blank" class="image-share mr-2" title="View PDF">
+                                <a href="{{ post.pdf_path if post.pdf_path.startswith('http') else '/' + post.pdf_path }}" target="_blank" class="image-share mr-2" title="View PDF">
                                     <i class="fas fa-file-pdf"></i>
                                 </a>
                                 {% else %}

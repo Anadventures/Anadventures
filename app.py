@@ -18,6 +18,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RL
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 import io
 import anthropic
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import requests
 
 # Try to import config, fallback to environment variable
 try:
@@ -50,6 +54,13 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Use environment variable for secret key in production, fallback for development
 app.secret_key = os.environ.get('SECRET_KEY', 'soverysecret-dev-key-change-in-production')
+
+# Cloudinary Configuration
+cloudinary.config( 
+  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
+  api_key = os.environ.get('CLOUDINARY_API_KEY'), 
+  api_secret = os.environ.get('CLOUDINARY_API_SECRET') 
+)
 
 #Database 
 db = SQLAlchemy(app)
@@ -107,8 +118,8 @@ class blog_posts(db.Model):
     title = db.Column(db.String(200))
     category = db.Column(db.String(100))  # Work, Life, Projects, etc.
     content = db.Column(db.Text)
-    image_path = db.Column(db.String(200))
-    pdf_path = db.Column(db.String(200))  # PDF file path
+    image_path = db.Column(db.String(500)) # Increased length for Cloudinary URLs
+    pdf_path = db.Column(db.String(500))  # Increased length for Cloudinary URLs
     created_at = db.Column(db.String(100))
     author_id = db.Column(db.Integer, default=1)  # Ananya's ID
 
@@ -383,6 +394,12 @@ def download_image(post_id):
     if not post or not post.image_path:
         return redirect(url_for('glimpses'))
     track_analytics("download", post_id)
+    
+    # If it's a Cloudinary URL, redirect to it
+    if post.image_path.startswith('http'):
+        return redirect(post.image_path)
+        
+    # Fallback for local files (legacy)
     return send_from_directory(directory=os.path.dirname(post.image_path), path=os.path.basename(post.image_path), as_attachment=True)
 
 @app.route('/download-pdf/<post_id>')
@@ -440,12 +457,24 @@ def download_pdf(post_id):
     story.append(Spacer(1, 0.3*inch))
     
     # Add image if exists
-    if post.image_path and os.path.exists(post.image_path):
+    if post.image_path:
         try:
-            img = RLImage(post.image_path, width=5*inch, height=5*inch)
-            story.append(img)
-            story.append(Spacer(1, 0.3*inch))
-        except:
+            img_data = None
+            if post.image_path.startswith('http'):
+                # Download image from Cloudinary
+                response = requests.get(post.image_path)
+                if response.status_code == 200:
+                    img_data = io.BytesIO(response.content)
+            elif os.path.exists(post.image_path):
+                # Local file
+                img_data = post.image_path
+                
+            if img_data:
+                img = RLImage(img_data, width=5*inch, height=5*inch)
+                story.append(img)
+                story.append(Spacer(1, 0.3*inch))
+        except Exception as e:
+            print(f"Error adding image to PDF: {e}")
             pass
     
     # Add content
@@ -703,24 +732,42 @@ def post():
 
             # Save image if provided
             if img:
-                image = Image.open(img)
-                image_path = f"static/portal_images/blog_{post_id}.jpg"
-                image.save(image_path)
-                post_obj.image_path = image_path
-                db.session.commit()
+                try:
+                    # Upload to Cloudinary
+                    upload_result = cloudinary.uploader.upload(img)
+                    image_path = upload_result['secure_url']
+                    post_obj.image_path = image_path
+                    db.session.commit()
+                    print(f"✅ Image uploaded to Cloudinary: {image_path}")
+                except Exception as e:
+                    print(f"❌ Cloudinary upload failed: {e}")
+                    # Fallback to local storage if Cloudinary fails (or dev mode without keys)
+                    image = Image.open(img)
+                    image_path = f"static/portal_images/blog_{post_id}.jpg"
+                    image.save(image_path)
+                    post_obj.image_path = image_path
+                    db.session.commit()
             
             # Save PDF if provided
             if pdf and pdf.filename:
-                # Create PDFs directory if it doesn't exist
-                pdf_dir = "static/portal_images/pdfs"
-                os.makedirs(pdf_dir, exist_ok=True)
-                
-                # Save PDF file
-                pdf_filename = f"blog_{post_id}_{pdf.filename}"
-                pdf_path = os.path.join(pdf_dir, pdf_filename)
-                pdf.save(pdf_path)
-                post_obj.pdf_path = pdf_path
-                db.session.commit()
+                try:
+                    # Upload to Cloudinary
+                    upload_result = cloudinary.uploader.upload(pdf, resource_type="raw")
+                    pdf_path = upload_result['secure_url']
+                    post_obj.pdf_path = pdf_path
+                    db.session.commit()
+                    print(f"✅ PDF uploaded to Cloudinary: {pdf_path}")
+                except Exception as e:
+                    print(f"❌ Cloudinary PDF upload failed: {e}")
+                    # Fallback to local
+                    pdf_dir = "static/portal_images/pdfs"
+                    os.makedirs(pdf_dir, exist_ok=True)
+                    
+                    pdf_filename = f"blog_{post_id}_{pdf.filename}"
+                    pdf_path = os.path.join(pdf_dir, pdf_filename)
+                    pdf.save(pdf_path)
+                    post_obj.pdf_path = pdf_path
+                    db.session.commit()
             
             track_analytics("post_created", post_obj.id)
             categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]

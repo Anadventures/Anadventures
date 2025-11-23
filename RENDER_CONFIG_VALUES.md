@@ -71,3 +71,4 @@ Click **"Add Environment Variable"** and add these 3:
 
 **After clicking "Deploy web service", wait 2-5 minutes for deployment!** 🚀
 
+
