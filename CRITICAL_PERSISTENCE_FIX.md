@@ -1,10 +1,20 @@
 # 🚨 CRITICAL: Fix Glimpses Persistence on Render
 
 ## The Problem
-Your glimpses are disappearing when Render restarts because **SQLite files are stored in the filesystem, which is ephemeral on Render**. Every time Render restarts or redeploys, the SQLite database file gets wiped.
+Your glimpses are disappearing when Render restarts because:
+
+1. **Images/PDFs** are stored on Cloudinary ✅ (these persist)
+2. **Post metadata** (title, content, category, date) is stored in **SQLite database** ❌
+3. **SQLite files** are stored in the filesystem, which is **ephemeral on Render**
+4. Every time Render restarts or redeploys, the SQLite database file gets **wiped**
+5. Even though images are on Cloudinary, the **post records disappear** from the database
+
+**Result:** Images exist on Cloudinary, but posts are gone because database records are lost.
 
 ## The Solution: PostgreSQL
-You **MUST** set up PostgreSQL on Render for glimpses to persist permanently.
+You **MUST** set up PostgreSQL on Render for **post metadata** to persist permanently.
+
+**Note:** Your images/PDFs are already on Cloudinary and persist. The issue is the **database** that stores post information (title, content, category, etc.). PostgreSQL will make the database persistent.
 
 ---
 
