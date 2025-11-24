@@ -121,6 +121,7 @@ class blog_posts(db.Model):
     image_path = db.Column(db.String(500)) # Increased length for Cloudinary URLs
     pdf_path = db.Column(db.String(500))  # Increased length for Cloudinary URLs
     created_at = db.Column(db.String(100))
+    show_date = db.Column(db.Boolean, default=True)  # Toggle to show/hide date
     author_id = db.Column(db.Integer, default=1)  # Ananya's ID
 
 class subscribers(db.Model):
@@ -147,12 +148,32 @@ def init_db():
 
 # Initialize database on app startup (important for Render deployment)
 # This ensures tables are created when the app starts
-with app.app_context():
-    try:
-        db.create_all()
-        print("✅ Database tables verified/created on startup")
-    except Exception as e:
-        print(f"⚠️ Database initialization note: {e}")
+def initialize_database():
+    """Initialize database and migrate existing data if needed"""
+    with app.app_context():
+        try:
+            db.create_all()
+            print("✅ Database tables verified/created on startup")
+            
+            # Migrate existing posts to add show_date field if missing
+            try:
+                posts = blog_posts.query.all()
+                migrated = 0
+                for post in posts:
+                    if post.show_date is None:
+                        post.show_date = True  # Default to showing date
+                        migrated += 1
+                if migrated > 0:
+                    db.session.commit()
+                    print(f"✅ Migrated {migrated} posts with show_date field")
+            except Exception as e:
+                print(f"⚠️ Migration note: {e}")
+                db.session.rollback()
+        except Exception as e:
+            print(f"⚠️ Database initialization note: {e}")
+
+# Run initialization
+initialize_database()
 
 
 #Data extractors 
@@ -729,6 +750,7 @@ def post():
                 content=content,
                 category=category,
                 created_at=date_str,
+                show_date=True,  # Default to showing date
                 author_id=1
             )
             db.session.add(post_obj)
@@ -825,6 +847,29 @@ def delete_post(post_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+# Toggle date visibility route
+@app.route('/toggle-date/<post_id>', methods=["POST"])
+def toggle_date(post_id):
+    # Check if logged in as Ananya
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    try:
+        post = blog_posts.query.filter_by(id=post_id).first()
+        if not post:
+            return jsonify({"error": "Post not found"}), 404
+        
+        # Toggle show_date
+        post.show_date = not post.show_date
+        db.session.commit()
+        
+        print(f"✅ Date visibility toggled for post {post_id}: {post.show_date}")
+        return jsonify({"success": True, "show_date": post.show_date})
+    except Exception as e:
+        print(f"❌ Error toggling date: {e}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # Edit post route
 @app.route('/edit-post/<post_id>', methods=["GET", "POST"])
 def edit_post(post_id):
@@ -846,6 +891,10 @@ def edit_post(post_id):
             post.title = request.form.get("title", post.title)
             post.content = request.form.get("content", post.content)
             post.category = request.form.get("category", post.category)
+            
+            # Update show_date toggle
+            show_date = request.form.get("show_date")
+            post.show_date = (show_date == "on" or show_date == "true")
             
             # Handle image update
             img = request.files.get("img")

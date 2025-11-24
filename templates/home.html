@@ -147,7 +147,9 @@
                             <span class="badge badge-primary mb-2">{{ post.category }}</span>
                             <h5 class="card-title font-weight-bold">{{ post.title }}</h5>
                             <p class="card-text text-muted">{{ post.content[:150] }}...</p>
+                            {% if post.show_date is not false %}
                             <small class="text-muted">{{ post.created_at }}</small>
+                            {% endif %}
                             <a href="{{ url_for('blog_post', post_id=post.id) }}" class="btn btn-sm btn-outline-primary mt-2">Read More</a>
                         </div>
                     </div>
