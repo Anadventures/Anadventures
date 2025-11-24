@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+<div class="jumbotron">
+    <div class="container-fluid">
+      <h1 class="display-3">Edit Glimpse</h1>
+      <p>Update your post content, images, or PDFs. <br>
+          Changes will be saved and visible immediately.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{error}}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{success}}</div>
+{% endif %}
+
+<script>
+    function readurl(input){
+        if (input.files && input.files[0]) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+            $('#preview')
+                .attr('src', e.target.result);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+    }
+</script>
+
+<div class="container-fluid" style="margin-top: 20px;">
+    <div class="card shadow" style="width: 100%; max-width: 1100px; margin: 0 auto; border:6px; border-radius: 25px; padding: 20px;">
+    
+    <div class="row no-gutters">
+        <div class="col-md-5">
+            {% if post.image_path %}
+            <img src="{{ post.image_path if post.image_path.startswith('http') else '/' + post.image_path }}" id="preview" width="100%" height="500" style="object-fit: cover; border-radius: 10px;">
+            {% else %}
+            <img src="/static/img/default-img.jpg" id="preview" width="100%" height="500" style="object-fit: cover; border-radius: 10px;">
+            {% endif %}
+        </div>
+        <div class="col-md-7 pl-4">
+            <form action='{{ url_for("edit_post", post_id=post.id) }}' method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title"><strong>Title:</strong></label>
+                    <input type="text" class="form-control" id="title" name="title" value="{{ post.title }}" placeholder="Enter post title.." required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category"><strong>Category:</strong></label>
+                    <select name="category" id="category" class="form-control" required>
+                        {% for cat in categories %}
+                        <option value="{{cat}}" {% if cat == post.category %}selected{% endif %}>{{cat}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="content"><strong>Content:</strong></label>
+                    <textarea rows="10" class="form-control" id="content" name="content" placeholder="Write your post content here.." required>{{ post.content }}</textarea>
+                </div>
+        
+                <div class="form-group">
+                    <label for="image"><strong>Update Image (Optional)</strong></label>
+                    <input type="file" id="image" name='img' onchange="readurl(this)" accept="image/*">
+                    <small class="form-text text-muted">Leave empty to keep current image</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pdf"><strong>Update PDF (Optional)</strong></label>
+                    <input type="file" id="pdf" name='pdf' accept="application/pdf">
+                    <small class="form-text text-muted">Leave empty to keep current PDF, or upload a new one to replace it</small>
+                </div>
+            
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('glimpse_post', post_id=post.id) }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    <button class="btn btn-primary btn-lg" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+{% endblock %}
+

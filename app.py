@@ -354,13 +354,16 @@ def glimpses():
         db.create_all()
         posts = blog_posts.query.order_by(blog_posts.id.desc()).all()
         print(f"✅ Found {len(posts)} posts in database")
-        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=posts)
+        # Check if user is logged in as Ananya
+        is_admin = "username" in session and session.get("username") == "Ananya Solanki"
+        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=posts, is_admin=is_admin)
     except Exception as e:
         print(f"❌ Error loading glimpses: {e}")
         import traceback
         traceback.print_exc()
         # Return empty list on error
-        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=[])
+        is_admin = "username" in session and session.get("username") == "Ananya Solanki"
+        return render_template("glimpses.html", display_nm="Ananya Solanki", posts=[], is_admin=is_admin)
 
 @app.route('/blog')
 def blog():
@@ -373,7 +376,9 @@ def blog_post(post_id):
     if not post:
         return redirect(url_for('blog'))
     track_analytics("view", post_id)
-    return render_template("blog_post.html", display_nm="Ananya Solanki", post=post)
+    # Check if user is logged in as Ananya
+    is_admin = "username" in session and session.get("username") == "Ananya Solanki"
+    return render_template("blog_post.html", display_nm="Ananya Solanki", post=post, is_admin=is_admin)
 
 @app.route('/glimpses/<post_id>')
 def glimpse_post(post_id):
@@ -381,7 +386,9 @@ def glimpse_post(post_id):
     if not post:
         return redirect(url_for('glimpses'))
     track_analytics("view", post_id)
-    return render_template("glimpse_post.html", display_nm="Ananya Solanki", post=post)
+    # Check if user is logged in as Ananya
+    is_admin = "username" in session and session.get("username") == "Ananya Solanki"
+    return render_template("glimpse_post.html", display_nm="Ananya Solanki", post=post, is_admin=is_admin)
 
 @app.route('/share/<post_id>')
 def share_post(post_id):
@@ -779,6 +786,116 @@ def post():
             db.session.rollback()
             categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
             return render_template("post.html", display_nm="Ananya Solanki", categories=categories, error=f"Error saving post: {str(e)}")
+
+# Delete post route
+@app.route('/delete-post/<post_id>', methods=["POST"])
+def delete_post(post_id):
+    # Check if logged in as Ananya
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    try:
+        post = blog_posts.query.filter_by(id=post_id).first()
+        if not post:
+            return jsonify({"error": "Post not found"}), 404
+        
+        # Delete associated files if they exist locally
+        if post.image_path and not post.image_path.startswith('http'):
+            try:
+                if os.path.exists(post.image_path):
+                    os.remove(post.image_path)
+            except Exception as e:
+                print(f"⚠️ Could not delete image file: {e}")
+        
+        if post.pdf_path and not post.pdf_path.startswith('http'):
+            try:
+                if os.path.exists(post.pdf_path):
+                    os.remove(post.pdf_path)
+            except Exception as e:
+                print(f"⚠️ Could not delete PDF file: {e}")
+        
+        # Delete from database
+        db.session.delete(post)
+        db.session.commit()
+        
+        print(f"✅ Post {post_id} deleted successfully")
+        return jsonify({"success": True, "message": "Post deleted successfully"})
+    except Exception as e:
+        print(f"❌ Error deleting post: {e}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# Edit post route
+@app.route('/edit-post/<post_id>', methods=["GET", "POST"])
+def edit_post(post_id):
+    # Check if logged in as Ananya
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return redirect(url_for('login'))
+    
+    post = blog_posts.query.filter_by(id=post_id).first()
+    if not post:
+        return redirect(url_for('glimpses'))
+    
+    if request.method == "GET":
+        categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+        return render_template("edit_post.html", display_nm="Ananya Solanki", post=post, categories=categories)
+    
+    elif request.method == "POST":
+        try:
+            # Update post fields
+            post.title = request.form.get("title", post.title)
+            post.content = request.form.get("content", post.content)
+            post.category = request.form.get("category", post.category)
+            
+            # Handle image update
+            img = request.files.get("img")
+            if img and img.filename:
+                try:
+                    # Try Cloudinary first
+                    upload_result = cloudinary.uploader.upload(img)
+                    image_path = upload_result['secure_url']
+                    post.image_path = image_path
+                    print(f"✅ Image updated on Cloudinary: {image_path}")
+                except Exception as e:
+                    print(f"❌ Cloudinary upload failed: {e}")
+                    # Fallback to local storage
+                    image = Image.open(img)
+                    image_path = f"static/portal_images/blog_{post_id}.jpg"
+                    image.save(image_path)
+                    post.image_path = image_path
+                    db.session.commit()
+            
+            # Handle PDF update
+            pdf = request.files.get("pdf")
+            if pdf and pdf.filename:
+                try:
+                    # Try Cloudinary first
+                    upload_result = cloudinary.uploader.upload(pdf, resource_type="raw")
+                    pdf_path = upload_result['secure_url']
+                    post.pdf_path = pdf_path
+                    print(f"✅ PDF updated on Cloudinary: {pdf_path}")
+                except Exception as e:
+                    print(f"❌ Cloudinary PDF upload failed: {e}")
+                    # Fallback to local storage
+                    pdf_dir = "static/portal_images/pdfs"
+                    os.makedirs(pdf_dir, exist_ok=True)
+                    pdf_filename = f"blog_{post_id}_{pdf.filename}"
+                    pdf_path = os.path.join(pdf_dir, pdf_filename)
+                    pdf.save(pdf_path)
+                    post.pdf_path = pdf_path
+            
+            # Save changes
+            db.session.commit()
+            print(f"✅ Post {post_id} updated successfully")
+            
+            return redirect(url_for('glimpse_post', post_id=post_id))
+        except Exception as e:
+            print(f"❌ Error updating post: {e}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            categories = ["Work", "Life", "Projects", "Thoughts", "Updates"]
+            return render_template("edit_post.html", display_nm="Ananya Solanki", post=post, categories=categories, error=f"Error updating post: {str(e)}")
 
 @app.route('/logout')
 def logout():
