@@ -268,6 +268,164 @@
             right: 5px;
         }
     }
+
+    /* Connect 4 Game Styles */
+    .connect4-game-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .player-info {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .player-info.active {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.6);
+        transform: scale(1.05);
+        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .player-icon {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+
+    .player-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .player-score {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #ffd700;
+    }
+
+    .game-status {
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .status-text {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .game-board-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px;
+    }
+
+    .game-board {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+        padding: 15px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        max-width: 100%;
+    }
+
+    .cell {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .cell:hover:not(.filled) {
+        background: rgba(255, 255, 255, 1);
+        transform: scale(1.1);
+        box-shadow: 0 5px 15px rgba(255, 255, 255, 0.4);
+    }
+
+    .cell.filled {
+        cursor: not-allowed;
+    }
+
+    .cell.player {
+        background: #ffd700;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), inset 0 3px 5px rgba(0, 0, 0, 0.2);
+        animation: dropPiece 0.4s ease;
+    }
+
+    .cell.ai {
+        background: #ff6b6b;
+        box-shadow: 0 0 20px rgba(255, 107, 107, 0.6), inset 0 3px 5px rgba(0, 0, 0, 0.2);
+        animation: dropPiece 0.4s ease;
+    }
+
+    .cell.winning {
+        animation: pulseWin 0.6s ease infinite;
+    }
+
+    @keyframes dropPiece {
+        0% {
+            transform: translateY(-300px);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes pulseWin {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+        50% {
+            transform: scale(1.15);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .cell {
+            width: 45px;
+            height: 45px;
+        }
+
+        .game-board {
+            gap: 5px;
+            padding: 10px;
+        }
+
+        .player-icon {
+            font-size: 2rem;
+        }
+
+        .player-name {
+            font-size: 1rem;
+        }
+
+        .player-score {
+            font-size: 1.5rem;
+        }
+    }
 </style>
 
 <section class="mt-4 mb-5">
@@ -422,39 +580,74 @@
         </div>
         {% endif %}
 
-        <!-- Latest Blog Posts -->
-        {% if blog_posts %}
-        <div class="container-fluid mb-5">
-            <h2 class="font-weight-bold mb-4 text-center">Latest Updates</h2>
-            <div class="row">
-                {% for post in blog_posts %}
-                <div class="col-md-4 mb-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        {% if post.image_path %}
-                        <img src="{{ post.image_path if post.image_path.startswith('http') else '/' + post.image_path }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
-                        {% else %}
-                        <div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-image fa-3x text-muted"></i>
-                        </div>
-                        {% endif %}
-                        <div class="card-body">
-                            <span class="badge badge-primary mb-2">{{ post.category }}</span>
-                            <h5 class="card-title font-weight-bold">{{ post.title }}</h5>
-                            <p class="card-text text-muted">{{ post.content[:150] }}...</p>
-                            {% if post.show_date is not false %}
-                            <small class="text-muted">{{ post.created_at }}</small>
-                            {% endif %}
-                            <a href="{{ url_for('blog_post', post_id=post.id) }}" class="btn btn-sm btn-outline-primary mt-2">Read More</a>
+        <!-- Connect 4 Game Section -->
+        <div class="container-fluid mb-5 mt-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-xl-8">
+                    <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 25px; overflow: hidden;">
+                        <div class="card-body p-5 text-white">
+                            <div class="text-center mb-4">
+                                <h2 class="font-weight-bold mb-3" style="font-size: 2.5rem;">
+                                    <i class="fas fa-gamepad mr-3"></i>Connect 4 Challenge
+                                </h2>
+                                <p class="lead mb-2" style="font-size: 1.3rem; opacity: 0.95;">
+                                    While you're here, have a little fun! 🎮
+                                </p>
+                                <p class="mb-4" style="font-size: 1.1rem; opacity: 0.9;">
+                                    Try to beat <strong>Ana's AI counterpart</strong> in a game of Connect 4!
+                                </p>
+                            </div>
+
+                            <div class="connect4-game-container">
+                                <div class="game-header mb-4">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                                            <div class="player-info player-you">
+                                                <div class="player-icon">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                                <div class="player-name">You</div>
+                                                <div class="player-score" id="playerScore">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                                            <div class="game-status" id="gameStatus">
+                                                <div class="status-text">Ready to Play!</div>
+                                                <button class="btn btn-light btn-lg mt-3" id="newGameBtn" onclick="startNewGame()">
+                                                    <i class="fas fa-play mr-2"></i>New Game
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <div class="player-info player-ai">
+                                                <div class="player-icon">
+                                                    <i class="fas fa-robot"></i>
+                                                </div>
+                                                <div class="player-name">Ms. Matterhorn</div>
+                                                <div class="player-score" id="aiScore">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="game-board-wrapper">
+                                    <div class="game-board" id="gameBoard">
+                                        <!-- Board will be generated by JavaScript -->
+                                    </div>
+                                </div>
+
+                                <div class="game-footer mt-4 text-center">
+                                    <p class="mb-0" style="opacity: 0.85; font-size: 0.95rem;">
+                                        <i class="fas fa-lightbulb mr-2"></i>
+                                        Get 4 in a row (horizontal, vertical, or diagonal) to win!
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            <div class="text-center mt-4">
-                <a href="{{ url_for('blog') }}" class="btn btn-primary btn-lg">View All Posts</a>
             </div>
         </div>
-        {% endif %}
 
         <!-- Quick Links -->
         <div class="container-fluid mb-5">
@@ -744,6 +937,281 @@
 
         // Initialize
         updateCarousel();
+    })();
+
+    // Connect 4 Game Logic
+    (function() {
+        const ROWS = 6;
+        const COLS = 7;
+        let board = [];
+        let currentPlayer = 1; // 1 = player, 2 = AI
+        let gameOver = false;
+        let playerScore = parseInt(localStorage.getItem('connect4PlayerScore') || '0');
+        let aiScore = parseInt(localStorage.getItem('connect4AiScore') || '0');
+        let isPlayerTurn = true;
+
+        function initGame() {
+            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+            currentPlayer = 1;
+            gameOver = false;
+            isPlayerTurn = true;
+            renderBoard();
+            updateScores();
+            updateStatus('Your turn! Make a move!', false);
+            updateActivePlayer();
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            if (!gameBoard) return;
+
+            gameBoard.innerHTML = '';
+            
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    if (board[row][col] === 1) {
+                        cell.classList.add('filled', 'player');
+                    } else if (board[row][col] === 2) {
+                        cell.classList.add('filled', 'ai');
+                    }
+                    
+                    if (!gameOver && isPlayerTurn) {
+                        cell.addEventListener('click', () => handleCellClick(col));
+                    }
+                    
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(col) {
+            if (gameOver || !isPlayerTurn) return;
+
+            const row = getNextAvailableRow(col);
+            if (row === -1) return;
+
+            board[row][col] = 1;
+            isPlayerTurn = false;
+            renderBoard();
+            updateActivePlayer();
+
+            if (checkWinner(row, col, 1)) {
+                gameOver = true;
+                playerScore++;
+                localStorage.setItem('connect4PlayerScore', playerScore);
+                updateScores();
+                highlightWinningCells(row, col, 1);
+                updateStatus('🎉 You Win! Great job!', true);
+                return;
+            }
+
+            if (checkDraw()) {
+                gameOver = true;
+                updateStatus('🤝 It\'s a Draw!', true);
+                return;
+            }
+
+            updateStatus('Ms. Matterhorn is thinking...', false);
+            
+            // AI move after a short delay
+            setTimeout(() => {
+                makeAIMove();
+            }, 500);
+        }
+
+        function getNextAvailableRow(col) {
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row][col] === 0) {
+                    return row;
+                }
+            }
+            return -1;
+        }
+
+        function makeAIMove() {
+            if (gameOver) return;
+
+            // AI Strategy: Try to win, block player, or make best move
+            let bestCol = -1;
+
+            // Check if AI can win
+            for (let col = 0; col < COLS; col++) {
+                const row = getNextAvailableRow(col);
+                if (row !== -1) {
+                    board[row][col] = 2;
+                    if (checkWinner(row, col, 2)) {
+                        board[row][col] = 0;
+                        bestCol = col;
+                        break;
+                    }
+                    board[row][col] = 0;
+                }
+            }
+
+            // Block player if they can win
+            if (bestCol === -1) {
+                for (let col = 0; col < COLS; col++) {
+                    const row = getNextAvailableRow(col);
+                    if (row !== -1) {
+                        board[row][col] = 1;
+                        if (checkWinner(row, col, 1)) {
+                            board[row][col] = 0;
+                            bestCol = col;
+                            break;
+                        }
+                        board[row][col] = 0;
+                    }
+                }
+            }
+
+            // Make strategic move (prefer center columns)
+            if (bestCol === -1) {
+                const centerCols = [3, 2, 4, 1, 5, 0, 6];
+                for (const col of centerCols) {
+                    if (getNextAvailableRow(col) !== -1) {
+                        bestCol = col;
+                        break;
+                    }
+                }
+            }
+
+            if (bestCol !== -1) {
+                const row = getNextAvailableRow(bestCol);
+                board[row][bestCol] = 2;
+                renderBoard();
+
+                if (checkWinner(row, bestCol, 2)) {
+                    gameOver = true;
+                    aiScore++;
+                    localStorage.setItem('connect4AiScore', aiScore);
+                    updateScores();
+                    highlightWinningCells(row, bestCol, 2);
+                    updateStatus('🤖 Ms. Matterhorn Wins! Try again!', true);
+                    return;
+                }
+
+                if (checkDraw()) {
+                    gameOver = true;
+                    updateStatus('🤝 It\'s a Draw!', true);
+                    return;
+                }
+
+                isPlayerTurn = true;
+                updateActivePlayer();
+                updateStatus('Your turn! Make a move!', false);
+            }
+        }
+
+        function checkWinner(row, col, player) {
+            const directions = [
+                [[0, 1], [0, -1]], // horizontal
+                [[1, 0], [-1, 0]], // vertical
+                [[1, 1], [-1, -1]], // diagonal /
+                [[1, -1], [-1, 1]] // diagonal \
+            ];
+
+            for (const [dir1, dir2] of directions) {
+                let count = 1;
+
+                // Check one direction
+                let r = row + dir1[0];
+                let c = col + dir1[1];
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                    count++;
+                    r += dir1[0];
+                    c += dir1[1];
+                }
+
+                // Check opposite direction
+                r = row + dir2[0];
+                c = col + dir2[1];
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                    count++;
+                    r += dir2[0];
+                    c += dir2[1];
+                }
+
+                if (count >= 4) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function highlightWinningCells(row, col, player) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const cellRow = parseInt(cell.dataset.row);
+                const cellCol = parseInt(cell.dataset.col);
+                if (board[cellRow][cellCol] === player) {
+                    cell.classList.add('winning');
+                }
+            });
+        }
+
+        function checkDraw() {
+            for (let col = 0; col < COLS; col++) {
+                if (getNextAvailableRow(col) !== -1) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function updateStatus(message, showButton) {
+            const statusDiv = document.getElementById('gameStatus');
+            if (!statusDiv) return;
+
+            const statusText = statusDiv.querySelector('.status-text');
+            const newGameBtn = document.getElementById('newGameBtn');
+
+            if (statusText) {
+                statusText.textContent = message;
+            }
+
+            if (newGameBtn) {
+                newGameBtn.style.display = showButton ? 'block' : 'none';
+            }
+        }
+
+        function updateScores() {
+            const playerScoreEl = document.getElementById('playerScore');
+            const aiScoreEl = document.getElementById('aiScore');
+            
+            if (playerScoreEl) playerScoreEl.textContent = playerScore;
+            if (aiScoreEl) aiScoreEl.textContent = aiScore;
+        }
+
+        function updateActivePlayer() {
+            const playerInfo = document.querySelectorAll('.player-info');
+            playerInfo.forEach(info => {
+                info.classList.remove('active');
+            });
+
+            if (isPlayerTurn && !gameOver) {
+                const playerYou = document.querySelector('.player-you');
+                if (playerYou) playerYou.classList.add('active');
+            } else if (!isPlayerTurn && !gameOver) {
+                const playerAi = document.querySelector('.player-ai');
+                if (playerAi) playerAi.classList.add('active');
+            }
+        }
+
+        // Make startNewGame available globally
+        window.startNewGame = function() {
+            initGame();
+        };
+
+        // Initialize game on page load
+        if (document.getElementById('gameBoard')) {
+            initGame();
+        }
     })();
 </script>
 

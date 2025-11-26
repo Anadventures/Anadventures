@@ -349,14 +349,13 @@ def admin_listing():
 @app.route('/')
 def index():
     # Home/About page
-    blog_posts_list = blog_posts.query.order_by(blog_posts.id.desc()).limit(6).all()
     # Get glimpses (posts with images) for carousel
     glimpses_list = blog_posts.query.filter(blog_posts.image_path.isnot(None), blog_posts.image_path != '').order_by(blog_posts.id.desc()).limit(10).all()
     track_analytics("view", None)  # Track homepage views
     # Check if it's November 9th
     today = datetime.now()
     is_birthday = today.month == 11 and today.day == 9
-    return render_template("home.html", display_nm="Ananya Solanki", blog_posts=blog_posts_list, glimpses=glimpses_list, is_birthday=is_birthday)
+    return render_template("home.html", display_nm="Ananya Solanki", glimpses=glimpses_list, is_birthday=is_birthday)
 
 @app.route('/experience')
 def experience():
