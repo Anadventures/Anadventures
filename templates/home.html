@@ -426,6 +426,79 @@
             font-size: 1.5rem;
         }
     }
+
+    /* Game Selection Styles */
+    .game-select-btn {
+        transition: all 0.3s ease;
+        border: 3px solid rgba(255,255,255,0.3);
+    }
+
+    .game-select-btn:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        border-color: rgba(255,255,255,0.6);
+    }
+
+    .game-container {
+        animation: fadeIn 0.5s ease;
+    }
+
+    /* Flappy Bird Game Styles */
+    .flappybird-game-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .flappybird-canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 15px;
+        padding: 20px;
+    }
+
+    #flappyCanvas {
+        background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #90EE90 70%, #90EE90 100%);
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        max-width: 100%;
+        height: auto;
+    }
+
+    .game-score-display {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 15px 30px;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .score-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+
+    .score-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #ffd700;
+    }
+
+    .game-status-flappy {
+        margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+        #flappyCanvas {
+            width: 100%;
+            max-width: 350px;
+        }
+    }
 </style>
 
 <section class="mt-4 mb-5">
@@ -580,7 +653,7 @@
         </div>
         {% endif %}
 
-        <!-- Connect 4 Game Section -->
+        <!-- Games Section -->
         <div class="container-fluid mb-5 mt-5">
             <div class="row justify-content-center">
                 <div class="col-lg-10 col-xl-8">
@@ -588,60 +661,128 @@
                         <div class="card-body p-5 text-white">
                             <div class="text-center mb-4">
                                 <h2 class="font-weight-bold mb-3" style="font-size: 2.5rem;">
-                                    <i class="fas fa-gamepad mr-3"></i>Connect 4 Challenge
+                                    <i class="fas fa-gamepad mr-3"></i>Fun Games
                                 </h2>
                                 <p class="lead mb-2" style="font-size: 1.3rem; opacity: 0.95;">
                                     While you're here, have a little fun! 🎮
                                 </p>
                                 <p class="mb-4" style="font-size: 1.1rem; opacity: 0.9;">
-                                    Try to beat <strong>Ana's AI counterpart</strong> in a game of Connect 4!
+                                    Try to beat <strong>Ana's AI counterpart</strong> or challenge yourself!
                                 </p>
                             </div>
 
-                            <div class="connect4-game-container">
-                                <div class="game-header mb-4">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                                            <div class="player-info player-you">
-                                                <div class="player-icon">
-                                                    <i class="fas fa-user"></i>
-                                                </div>
-                                                <div class="player-name">You</div>
-                                                <div class="player-score" id="playerScore">0</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                                            <div class="game-status" id="gameStatus">
-                                                <div class="status-text">Ready to Play!</div>
-                                                <button class="btn btn-light btn-lg mt-3" id="newGameBtn" onclick="startNewGame()">
-                                                    <i class="fas fa-play mr-2"></i>New Game
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 text-center">
-                                            <div class="player-info player-ai">
-                                                <div class="player-icon">
-                                                    <i class="fas fa-robot"></i>
-                                                </div>
-                                                <div class="player-name">Ms. Matterhorn</div>
-                                                <div class="player-score" id="aiScore">0</div>
-                                            </div>
+                            <!-- Game Selection -->
+                            <div id="gameSelection" class="text-center mb-4">
+                                <div class="row justify-content-center">
+                                    <div class="col-md-5 mb-3">
+                                        <button class="btn btn-light btn-lg btn-block game-select-btn" onclick="selectGame('connect4')" style="padding: 30px; font-size: 1.3rem;">
+                                            <i class="fas fa-th fa-2x mb-2"></i><br>
+                                            Connect 4
+                                        </button>
+                                    </div>
+                                    <div class="col-md-5 mb-3">
+                                        <button class="btn btn-light btn-lg btn-block game-select-btn" onclick="selectGame('flappybird')" style="padding: 30px; font-size: 1.3rem;">
+                                            <i class="fas fa-dove fa-2x mb-2"></i><br>
+                                            Flappy Bird
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- LinkedIn Name Input -->
+                                <div class="mt-4" id="linkedinInputContainer" style="display: none;">
+                                    <div class="row justify-content-center">
+                                        <div class="col-md-6">
+                                            <input type="text" 
+                                                   id="linkedinNameInput" 
+                                                   class="form-control form-control-lg" 
+                                                   placeholder="Enter your LinkedIn name (optional)"
+                                                   style="background: rgba(255,255,255,0.9);">
+                                            <small class="text-white-50 mt-2 d-block">Your score will be saved to the leaderboard!</small>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="game-board-wrapper">
-                                    <div class="game-board" id="gameBoard">
-                                        <!-- Board will be generated by JavaScript -->
+                            <!-- Connect 4 Game Container -->
+                            <div id="connect4Game" class="game-container" style="display: none;">
+                                <div class="connect4-game-container">
+                                    <div class="game-header mb-4">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4 text-center mb-3 mb-md-0">
+                                                <div class="player-info player-you">
+                                                    <div class="player-icon">
+                                                        <i class="fas fa-user"></i>
+                                                    </div>
+                                                    <div class="player-name">You</div>
+                                                    <div class="player-score" id="playerScore">0</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 text-center mb-3 mb-md-0">
+                                                <div class="game-status" id="gameStatus">
+                                                    <div class="status-text">Ready to Play!</div>
+                                                    <button class="btn btn-light btn-lg mt-3" id="newGameBtn" onclick="startNewGame()">
+                                                        <i class="fas fa-play mr-2"></i>New Game
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 text-center">
+                                                <div class="player-info player-ai">
+                                                    <div class="player-icon">
+                                                        <i class="fas fa-robot"></i>
+                                                    </div>
+                                                    <div class="player-name">Ms. Matterhorn</div>
+                                                    <div class="player-score" id="aiScore">0</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="game-board-wrapper">
+                                        <div class="game-board" id="gameBoard">
+                                            <!-- Board will be generated by JavaScript -->
+                                        </div>
+                                    </div>
+
+                                    <div class="game-footer mt-4 text-center">
+                                        <p class="mb-0" style="opacity: 0.85; font-size: 0.95rem;">
+                                            <i class="fas fa-lightbulb mr-2"></i>
+                                            Get 4 in a row (horizontal, vertical, or diagonal) to win!
+                                        </p>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="game-footer mt-4 text-center">
-                                    <p class="mb-0" style="opacity: 0.85; font-size: 0.95rem;">
-                                        <i class="fas fa-lightbulb mr-2"></i>
-                                        Get 4 in a row (horizontal, vertical, or diagonal) to win!
-                                    </p>
+                            <!-- Flappy Bird Game Container -->
+                            <div id="flappybirdGame" class="game-container" style="display: none;">
+                                <div class="flappybird-game-container">
+                                    <div class="text-center mb-3">
+                                        <div class="game-score-display">
+                                            <div class="score-label">Score</div>
+                                            <div class="score-value" id="flappyScore">0</div>
+                                        </div>
+                                        <div class="game-status-flappy" id="flappyStatus">
+                                            <button class="btn btn-light btn-lg" onclick="startFlappyBird()">
+                                                <i class="fas fa-play mr-2"></i>Start Game
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flappybird-canvas-wrapper">
+                                        <canvas id="flappyCanvas" width="400" height="600"></canvas>
+                                    </div>
+                                    <div class="game-instructions mt-3 text-center">
+                                        <p class="mb-0" style="opacity: 0.85; font-size: 0.95rem;">
+                                            <i class="fas fa-mouse-pointer mr-2"></i>
+                                            Click or press SPACE to flap!
+                                        </p>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <!-- Back Button -->
+                            <div id="backToSelection" class="text-center mt-4" style="display: none;">
+                                <button class="btn btn-outline-light btn-lg" onclick="backToGameSelection()">
+                                    <i class="fas fa-arrow-left mr-2"></i>Back to Game Selection
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -939,20 +1080,82 @@
         updateCarousel();
     })();
 
+    // Game Selection and Management
+    let currentGame = null;
+    let linkedinName = '';
+
+    function selectGame(gameType) {
+        currentGame = gameType;
+        document.getElementById('gameSelection').style.display = 'none';
+        document.getElementById('linkedinInputContainer').style.display = 'block';
+        document.getElementById('backToSelection').style.display = 'block';
+        
+        if (gameType === 'connect4') {
+            document.getElementById('connect4Game').style.display = 'block';
+            document.getElementById('flappybirdGame').style.display = 'none';
+            if (typeof connect4Game !== 'undefined') {
+                connect4Game.initGame();
+            }
+        } else if (gameType === 'flappybird') {
+            document.getElementById('connect4Game').style.display = 'none';
+            document.getElementById('flappybirdGame').style.display = 'block';
+        }
+    }
+
+    function backToGameSelection() {
+        document.getElementById('gameSelection').style.display = 'block';
+        document.getElementById('linkedinInputContainer').style.display = 'none';
+        document.getElementById('connect4Game').style.display = 'none';
+        document.getElementById('flappybirdGame').style.display = 'none';
+        document.getElementById('backToSelection').style.display = 'none';
+        currentGame = null;
+    }
+
+    // Save LinkedIn name
+    document.addEventListener('DOMContentLoaded', function() {
+        const linkedinInput = document.getElementById('linkedinNameInput');
+        if (linkedinInput) {
+            linkedinInput.addEventListener('input', function() {
+                linkedinName = this.value.trim();
+            });
+        }
+    });
+
+    // Save score to database
+    async function saveScore(gameType, score) {
+        try {
+            const response = await fetch('/api/save-game-score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    linkedin_name: linkedinName,
+                    game_type: gameType,
+                    score: score
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('Score saved!');
+            }
+        } catch (error) {
+            console.error('Error saving score:', error);
+        }
+    }
+
     // Connect 4 Game Logic
-    (function() {
+    const connect4Game = (function() {
         const ROWS = 6;
         const COLS = 7;
         let board = [];
-        let currentPlayer = 1; // 1 = player, 2 = AI
         let gameOver = false;
-        let playerScore = parseInt(localStorage.getItem('connect4PlayerScore') || '0');
-        let aiScore = parseInt(localStorage.getItem('connect4AiScore') || '0');
+        let playerWins = 0;
+        let aiWins = 0;
         let isPlayerTurn = true;
 
         function initGame() {
             board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
-            currentPlayer = 1;
             gameOver = false;
             isPlayerTurn = true;
             renderBoard();
@@ -980,9 +1183,8 @@
                         cell.classList.add('filled', 'ai');
                     }
                     
-                    if (!gameOver && isPlayerTurn) {
-                        cell.addEventListener('click', () => handleCellClick(col));
-                    }
+                    // Always attach click handler, but check game state inside
+                    cell.addEventListener('click', () => handleCellClick(col));
                     
                     gameBoard.appendChild(cell);
                 }
@@ -1002,11 +1204,11 @@
 
             if (checkWinner(row, col, 1)) {
                 gameOver = true;
-                playerScore++;
-                localStorage.setItem('connect4PlayerScore', playerScore);
+                playerWins++;
                 updateScores();
                 highlightWinningCells(row, col, 1);
                 updateStatus('🎉 You Win! Great job!', true);
+                saveScore('connect4', playerWins);
                 return;
             }
 
@@ -1087,8 +1289,7 @@
 
                 if (checkWinner(row, bestCol, 2)) {
                     gameOver = true;
-                    aiScore++;
-                    localStorage.setItem('connect4AiScore', aiScore);
+                    aiWins++;
                     updateScores();
                     highlightWinningCells(row, bestCol, 2);
                     updateStatus('🤖 Ms. Matterhorn Wins! Try again!', true);
@@ -1184,8 +1385,8 @@
             const playerScoreEl = document.getElementById('playerScore');
             const aiScoreEl = document.getElementById('aiScore');
             
-            if (playerScoreEl) playerScoreEl.textContent = playerScore;
-            if (aiScoreEl) aiScoreEl.textContent = aiScore;
+            if (playerScoreEl) playerScoreEl.textContent = playerWins;
+            if (aiScoreEl) aiScoreEl.textContent = aiWins;
         }
 
         function updateActivePlayer() {
@@ -1203,16 +1404,212 @@
             }
         }
 
-        // Make startNewGame available globally
-        window.startNewGame = function() {
-            initGame();
+        return {
+            initGame: initGame
         };
-
-        // Initialize game on page load
-        if (document.getElementById('gameBoard')) {
-            initGame();
-        }
     })();
+
+    // Make startNewGame available globally
+    window.startNewGame = function() {
+        if (connect4Game) {
+            connect4Game.initGame();
+        }
+    };
+
+    // Flappy Bird Game
+    const flappyBirdGame = (function() {
+        let canvas, ctx;
+        let bird, pipes = [];
+        let score = 0;
+        let gameRunning = false;
+        let animationId;
+
+        function init() {
+            canvas = document.getElementById('flappyCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            
+            bird = {
+                x: 50,
+                y: canvas.height / 2,
+                width: 30,
+                height: 30,
+                velocity: 0,
+                gravity: 0.5,
+                jump: -8
+            };
+
+            pipes = [];
+            score = 0;
+            gameRunning = false;
+        }
+
+        function startGame() {
+            if (gameRunning) return;
+            
+            init();
+            gameRunning = true;
+            pipes = [];
+            score = 0;
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            
+            document.getElementById('flappyStatus').innerHTML = '';
+            updateScore();
+            
+            // Create first pipe
+            createPipe();
+            
+            // Create pipes periodically
+            setInterval(() => {
+                if (gameRunning) createPipe();
+            }, 2000);
+            
+            gameLoop();
+        }
+
+        function createPipe() {
+            const gap = 150;
+            const pipeWidth = 60;
+            const minHeight = 50;
+            const maxHeight = canvas.height - gap - minHeight;
+            const topHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+            
+            pipes.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomY: topHeight + gap,
+                width: pipeWidth,
+                passed: false
+            });
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Update bird
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Check boundaries
+            if (bird.y < 0 || bird.y + bird.height > canvas.height) {
+                endGame();
+                return;
+            }
+
+            // Update pipes
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= 3;
+
+                // Check collision
+                if (bird.x < pipe.x + pipe.width &&
+                    bird.x + bird.width > pipe.x &&
+                    (bird.y < pipe.topHeight || bird.y + bird.height > pipe.bottomY)) {
+                    endGame();
+                    return;
+                }
+
+                // Score point
+                if (!pipe.passed && bird.x > pipe.x + pipe.width) {
+                    pipe.passed = true;
+                    score++;
+                    updateScore();
+                }
+
+                // Remove off-screen pipes
+                if (pipe.x + pipe.width < 0) {
+                    pipes.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = '#90EE90';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+            // Draw bird
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.width/2, bird.y + bird.height/2, bird.width/2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw pipes
+            ctx.fillStyle = '#228B22';
+            pipes.forEach(pipe => {
+                // Top pipe
+                ctx.fillRect(pipe.x, 0, pipe.width, pipe.topHeight);
+                // Bottom pipe
+                ctx.fillRect(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY);
+            });
+
+            // Score
+            ctx.fillStyle = '#000';
+            ctx.font = '30px Arial';
+            ctx.fillText('Score: ' + score, 10, 40);
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            if (animationId) cancelAnimationFrame(animationId);
+            
+            document.getElementById('flappyStatus').innerHTML = 
+                '<div class="mb-3"><strong>Game Over!</strong><br>Final Score: ' + score + '</div>' +
+                '<button class="btn btn-light btn-lg" onclick="startFlappyBird()">Play Again</button>';
+            
+            saveScore('flappybird', score);
+        }
+
+        function updateScore() {
+            document.getElementById('flappyScore').textContent = score;
+        }
+
+        function flap() {
+            if (!gameRunning) {
+                startGame();
+            } else {
+                bird.velocity = bird.jump;
+            }
+        }
+
+        // Event listeners
+        if (document.getElementById('flappyCanvas')) {
+            init();
+            canvas.addEventListener('click', flap);
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    flap();
+                }
+            });
+        }
+
+        return {
+            startGame: startGame
+        };
+    })();
+
+    window.startFlappyBird = function() {
+        if (flappyBirdGame) {
+            flappyBirdGame.startGame();
+        }
+    };
+
+    window.selectGame = selectGame;
+    window.backToGameSelection = backToGameSelection;
 </script>
 
 {% endblock %}

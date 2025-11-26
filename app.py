@@ -134,6 +134,13 @@ class subscribers(db.Model):
 class analytics(db.Model):
     id = db.Column('analytics_id', db.Integer, primary_key=True)
     event_type = db.Column(db.String(50))  # view, share, download, pdf_download, subscribe
+
+class game_leaderboard(db.Model):
+    id = db.Column('leaderboard_id', db.Integer, primary_key=True)
+    linkedin_name = db.Column(db.String(200))
+    game_type = db.Column(db.String(50))  # 'connect4' or 'flappybird'
+    score = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     post_id = db.Column(db.Integer, nullable=True)
     ip_address = db.Column(db.String(50))
     timestamp = db.Column(db.String(100))
@@ -1030,6 +1037,58 @@ def analytics_data():
         "subscribers": total_subscribers,
         "posts": total_posts
     })
+
+@app.route('/api/save-game-score', methods=['POST'])
+def save_game_score():
+    try:
+        data = request.json
+        linkedin_name = data.get('linkedin_name', '').strip()
+        game_type = data.get('game_type')
+        score = data.get('score')
+        
+        if not game_type or score is None:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        if game_type not in ['connect4', 'flappybird']:
+            return jsonify({"error": "Invalid game type"}), 400
+        
+        # Save to leaderboard
+        leaderboard_entry = game_leaderboard(
+            linkedin_name=linkedin_name or "Anonymous",
+            game_type=game_type,
+            score=score
+        )
+        db.session.add(leaderboard_entry)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Score saved!"})
+    except Exception as e:
+        print(f"Error saving score: {e}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/leaderboard')
+def leaderboard():
+    # Only Ananya can view the leaderboard
+    if "username" not in session or session.get("username") != "Ananya Solanki":
+        return redirect(url_for('index'))
+    
+    try:
+        db.create_all()
+        # Get top scores for each game
+        connect4_scores = game_leaderboard.query.filter_by(game_type='connect4').order_by(game_leaderboard.score.desc()).limit(20).all()
+        flappybird_scores = game_leaderboard.query.filter_by(game_type='flappybird').order_by(game_leaderboard.score.desc()).limit(20).all()
+        
+        return render_template("leaderboard.html", 
+                             display_nm="Ananya Solanki",
+                             connect4_scores=connect4_scores,
+                             flappybird_scores=flappybird_scores)
+    except Exception as e:
+        print(f"Error loading leaderboard: {e}")
+        return render_template("leaderboard.html", 
+                             display_nm="Ananya Solanki",
+                             connect4_scores=[],
+                             flappybird_scores=[])
 
 @app.route('/chatbot')
 def chatbot():
