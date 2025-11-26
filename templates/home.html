@@ -1444,8 +1444,13 @@
             gameRunning = false;
         }
 
+        let pipeInterval = null;
+
         function startGame() {
-            if (gameRunning) return;
+            if (gameRunning) {
+                // Reset game properly
+                endGame();
+            }
             
             init();
             gameRunning = true;
@@ -1454,48 +1459,55 @@
             bird.y = canvas.height / 2;
             bird.velocity = 0;
             
+            // Clear any existing intervals
+            if (pipeInterval) {
+                clearInterval(pipeInterval);
+            }
+            
             document.getElementById('flappyStatus').innerHTML = '';
             updateScore();
             
-            // Create first pipe
-            createPipe();
-            
-            // Create pipes periodically
-            setInterval(() => {
+            // Create first pipe after a short delay
+            setTimeout(() => {
                 if (gameRunning) createPipe();
-            }, 2000);
+            }, 1000);
+            
+            // Create pipes periodically - ensure only one interval is running
+            pipeInterval = setInterval(() => {
+                if (gameRunning) {
+                    createPipe();
+                } else {
+                    clearInterval(pipeInterval);
+                }
+            }, 2200); // Slightly longer interval for easier gameplay
             
             gameLoop();
         }
 
         function createPipe() {
-            const gap = 180; // Increased gap size for easier navigation
+            const gap = 200; // Large fixed gap for easy navigation
             const pipeWidth = 60;
             const groundHeight = 50; // Ground takes up bottom 50px
-            
-            // Center the gap in the middle of the playable area with some variation
-            // Playable area is from 0 to canvas.height - groundHeight
             const playableHeight = canvas.height - groundHeight;
-            const centerY = playableHeight / 2;
             
-            // Vary the gap position around center (between 30% and 70% of playable height)
-            // This ensures the gap is always in a reasonable position
-            const minGapCenter = playableHeight * 0.3;
-            const maxGapCenter = playableHeight * 0.7;
+            // Simple, consistent gap positioning - always centered with small variation
+            // Gap center is always between 40% and 60% of playable height (very safe range)
+            const minGapCenter = playableHeight * 0.4;
+            const maxGapCenter = playableHeight * 0.6;
             const gapCenter = minGapCenter + Math.random() * (maxGapCenter - minGapCenter);
             
-            // Calculate top pipe height (gap starts at gapCenter - gap/2)
-            const topHeight = Math.max(20, gapCenter - gap / 2);
-            const bottomY = Math.min(canvas.height - groundHeight, topHeight + gap);
+            // Calculate top and bottom pipe positions
+            const topHeight = Math.max(30, gapCenter - gap / 2);
+            const bottomY = topHeight + gap;
             
-            // Ensure we have enough space at top and bottom
-            const actualTopHeight = Math.max(20, Math.min(topHeight, playableHeight - gap - 20));
-            const actualBottomY = actualTopHeight + gap;
+            // Double-check that bottom pipe doesn't go into ground
+            const safeBottomY = Math.min(bottomY, playableHeight - 30);
+            const safeTopHeight = safeBottomY - gap;
             
             pipes.push({
                 x: canvas.width,
-                topHeight: actualTopHeight,
-                bottomY: actualBottomY,
+                topHeight: Math.max(30, safeTopHeight),
+                bottomY: safeBottomY,
                 width: pipeWidth,
                 passed: false
             });
@@ -1582,7 +1594,19 @@
 
         function endGame() {
             gameRunning = false;
-            if (animationId) cancelAnimationFrame(animationId);
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            // Clear pipe interval
+            if (pipeInterval) {
+                clearInterval(pipeInterval);
+                pipeInterval = null;
+            }
+            
+            // Clear all pipes
+            pipes = [];
             
             document.getElementById('flappyStatus').innerHTML = 
                 '<div class="mb-3"><strong>Game Over!</strong><br>Final Score: ' + score + '</div>' +

@@ -13,7 +13,7 @@
             <div class="col-md-4 mb-4">
                 <div class="card shadow-sm border-0 h-100">
                     {% if post.image_path %}
-                    <img src="/{{ post.image_path }}" class="card-img-top" alt="{{ post.title }}" style="height: 250px; object-fit: cover;">
+                    <img src="{{ post.image_path if post.image_path.startswith('http') else '/' + post.image_path }}" class="card-img-top" alt="{{ post.title }}" style="height: 250px; object-fit: cover;">
                     {% else %}
                     <div class="card-img-top bg-light" style="height: 250px; display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-image fa-4x text-muted"></i>
