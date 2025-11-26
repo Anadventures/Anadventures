@@ -712,10 +712,7 @@ def profile_view(profile_email,action):
 # Track analytics
 def track_analytics(event_type, post_id=None):
     try:
-        ip = request.remote_addr
-        dt = datetime.now()
-        timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
-        analytics_obj = analytics(event_type=event_type, post_id=post_id, ip_address=ip, timestamp=timestamp)
+        analytics_obj = analytics(event_type=event_type)
         db.session.add(analytics_obj)
         db.session.commit()
     except Exception as e:
